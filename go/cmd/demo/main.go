@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/zlogic/token-calibrator/go/calibrator"
+	calibrator "github.com/zlogic/token-calibrator/go"
 )
 
 func main() {
