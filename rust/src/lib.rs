@@ -163,8 +163,8 @@ pub fn solve_linear_system(a: Matrix4, b: Coefficients) -> Coefficients {
             if factor.abs() < 1e-18 {
                 continue;
             }
-            for (dest, src) in aug[r][col..=n].iter_mut().zip(aug[col][col..=n].iter()) {
-                *dest -= factor * *src;
+            for c in col..=n {
+                aug[r][c] -= factor * aug[col][c];
             }
         }
     }

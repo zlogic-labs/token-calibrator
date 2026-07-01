@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "token-calibrator"
 version = "1.0.0"
 description = "Calibrated, self-learning token estimator for live context-size display"
-license = { text = "MIT" }
+license = "MIT"
 readme = "../README.md"
 keywords = ["token", "estimator", "llm", "regression"]
 requires-python = ">=3.10"

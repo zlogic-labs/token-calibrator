@@ -175,6 +175,9 @@ type TokenCalibratorSnapshot struct {
 
 // isValidSnapshot checks that a snapshot is structurally valid.
 func isValidSnapshot(snap *TokenCalibratorSnapshot) bool {
+	if snap == nil {
+		return false
+	}
 	if math.IsInf(snap.Strength, 0) || math.IsNaN(snap.Strength) || snap.Strength <= 0 {
 		return false
 	}
