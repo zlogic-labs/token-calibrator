@@ -1,6 +1,6 @@
 {
   "name": "@zlogic/token-calibrator",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Calibrated, self-learning token estimator for live context-size display",
   "license": "MIT",
   "repository": {

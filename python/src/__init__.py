@@ -24,4 +24,4 @@ __all__ = [
     "solve_linear_system",
 ]
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
