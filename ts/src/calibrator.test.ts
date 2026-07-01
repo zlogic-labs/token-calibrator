@@ -78,4 +78,24 @@ describe('TokenCalibrator', () => {
     expect(coef).toHaveProperty('digit');
     expect(coef).toHaveProperty('other');
   });
+
+  it('creates from model JSON', () => {
+    const json = JSON.stringify({
+      models: {
+        'test-model': {
+          a: [[1000,0,0,0],[0,1000,0,0],[0,0,1000,0],[0,0,0,1000]],
+          g: [1000,250,400,600],
+          strength: 1000,
+        },
+      },
+    });
+    const cal = TokenCalibrator.fromModel('test-model', json);
+    expect(cal).not.toBeNull();
+    expect(cal!.estimate('Hello world')).toBe(3);
+  });
+
+  it('returns null for missing model', () => {
+    const json = JSON.stringify({ models: {} });
+    expect(TokenCalibrator.fromModel('nonexistent', json)).toBeNull();
+  });
 });

@@ -89,3 +89,24 @@ def test_is_valid_snapshot():
         "strength": 1000.0,
     }
     assert is_valid_snapshot(snap)
+
+
+def test_from_model():
+    json_data = """
+    {
+        "models": {
+            "test-model": {
+                "a": [[1000,0,0,0],[0,1000,0,0],[0,0,1000,0],[0,0,0,1000]],
+                "g": [1000,250,400,600],
+                "strength": 1000
+            }
+        }
+    }
+    """
+    cal = TokenCalibrator.from_model("test-model", json_data)
+    assert cal.estimate("Hello world") == 3
+
+
+def test_from_model_missing():
+    cal = TokenCalibrator.from_model("nonexistent", '{"models": {}}')
+    assert cal.estimate("Hello world") == 3  # falls back to fresh calibrator

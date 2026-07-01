@@ -284,6 +284,35 @@ class TokenCalibrator:
             'strength': self.strength,
         }
 
+    @classmethod
+    def from_model(cls, name: str, json_data: str) -> 'TokenCalibrator':
+        """Create a calibrator from a named model in a models.json string.
+
+        Args:
+            name: Model name, e.g. ``"gpt-4o"``.
+            json_data: The JSON string matching the models/models.json format.
+
+        Returns:
+            A new calibrator seeded with that model's snapshot, or a fresh
+            prior-seeded calibrator if the model is not found.
+        """
+        import json
+        try:
+            file = json.loads(json_data)
+        except json.JSONDecodeError:
+            return cls()
+        entry = file.get('models', {}).get(name)
+        if not entry:
+            return cls()
+        snap = {
+            'a': entry['a'],
+            'g': entry['g'],
+            'strength': entry['strength'],
+        }
+        if not is_valid_snapshot(snap):
+            return cls()
+        return cls(snapshot=snap)
+
 
 # -----------------------------------------------------------------------------
 # Simple tests (run with pytest or directly)

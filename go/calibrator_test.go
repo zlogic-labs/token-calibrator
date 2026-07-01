@@ -137,3 +137,38 @@ func TestIsValidSnapshot(t *testing.T) {
 		t.Error("valid snapshot should be valid")
 	}
 }
+
+func TestNewTokenCalibratorFromModel(t *testing.T) {
+	jsonData := []byte(`{
+		"models": {
+			"test-model": {
+				"a": [[1000,0,0,0],[0,1000,0,0],[0,0,1000,0],[0,0,0,1000]],
+				"g": [1000,250,400,600],
+				"strength": 1000
+			}
+		}
+	}`)
+	cal := NewTokenCalibratorFromModel("test-model", jsonData)
+	if cal == nil {
+		t.Fatal("expected non-nil calibrator")
+	}
+	n := cal.Estimate("Hello world")
+	if n != 3 {
+		t.Errorf("expected 3 from prior, got %d", n)
+	}
+}
+
+func TestNewTokenCalibratorFromModelMissing(t *testing.T) {
+	jsonData := []byte(`{"models": {}}`)
+	cal := NewTokenCalibratorFromModel("nonexistent", jsonData)
+	if cal != nil {
+		t.Error("expected nil for missing model")
+	}
+}
+
+func TestNewTokenCalibratorFromModelBadJSON(t *testing.T) {
+	cal := NewTokenCalibratorFromModel("x", []byte("not json"))
+	if cal != nil {
+		t.Error("expected nil for bad JSON")
+	}
+}

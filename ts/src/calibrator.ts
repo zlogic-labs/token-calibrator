@@ -332,6 +332,52 @@ export class TokenCalibrator {
     };
   }
 
+  // -------------------------------------------------------------------------
+  // Model file loading
+  // -------------------------------------------------------------------------
+
+  /**
+   * Create a calibrator from a named model in a `models.json`-format string.
+   *
+   * ```ts
+   * import { readFileSync } from 'fs';
+   * const json = readFileSync('models/models.json', 'utf-8');
+   * const cal = TokenCalibrator.fromModel('gpt-4o', json);
+   * ```
+   */
+  static fromModel(name: string, jsonData: string): TokenCalibrator | null {
+    type ModelEntry = {
+      a: number[][];
+      g: number[];
+      strength: number;
+    };
+    type ModelsFile = {
+      models: Record<string, ModelEntry>;
+    };
+
+    let file: ModelsFile;
+    try {
+      file = JSON.parse(jsonData) as ModelsFile;
+    } catch {
+      return null;
+    }
+    const entry = file.models?.[name];
+    if (!entry) return null;
+    if (
+      !Array.isArray(entry.a) || entry.a.length !== N_BUCKETS ||
+      !Array.isArray(entry.g) || entry.g.length !== N_BUCKETS ||
+      typeof entry.strength !== 'number' || entry.strength <= 0
+    ) {
+      return null;
+    }
+    const snapshot: TokenCalibratorSnapshot = {
+      a: entry.a.map((row: number[]) => row.slice()),
+      g: entry.g.slice(),
+      strength: entry.strength,
+    };
+    return new TokenCalibrator({}, snapshot);
+  }
+
   private solve(): number[] {
     if (!this.theta) this.theta = solveLinearSystem(this.a, this.g);
     return this.theta;

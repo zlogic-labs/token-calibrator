@@ -183,6 +183,7 @@ pub fn solve_linear_system(a: Matrix4, b: Coefficients) -> Coefficients {
 
 /// Serializable state of a calibrator.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TokenCalibratorSnapshot {
     pub a: Matrix4,
     pub g: Coefficients,
@@ -371,6 +372,55 @@ impl TokenCalibrator {
             strength: self.strength,
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Model file loading (requires feature "serde")
+    // -------------------------------------------------------------------------
+
+    /// Parse a `models/models.json`-format string and return a calibrator
+    /// seeded with the snapshot for `model_name`.
+    ///
+    /// Returns `None` if the model name is not found or the JSON is malformed.
+    ///
+    /// ```ignore
+    /// let cal = TokenCalibrator::from_model("gpt-4o", JSON_STR).unwrap();
+    /// ```
+    #[cfg(feature = "serde")]
+    pub fn from_model(name: &str, json_data: &str) -> Option<Self> {
+        #[derive(serde::Deserialize)]
+        struct ModelEntry {
+            a: Matrix4,
+            g: Coefficients,
+            strength: f64,
+        }
+        #[derive(serde::Deserialize)]
+        struct ModelsFile {
+            models: std::collections::HashMap<String, ModelEntry>,
+        }
+
+        let file: ModelsFile = serde_json::from_str(json_data).ok()?;
+        let entry = file.models.get(name)?;
+        let snap = TokenCalibratorSnapshot {
+            a: entry.a,
+            g: entry.g,
+            strength: entry.strength,
+        };
+        if !is_valid_snapshot(&snap) {
+            return None;
+        }
+        Some(Self::new(TokenCalibratorOptions::default(), Some(&snap)))
+    }
+
+    /// Load a calibrator from the bundled `models/models.json` by model name.
+    ///
+    /// ```ignore
+    /// let cal = TokenCalibrator::from_bundled_model("gpt-4o").unwrap();
+    /// ```
+    #[cfg(feature = "serde")]
+    pub fn from_bundled_model(name: &str) -> Option<Self> {
+        let json = include_str!("../../models/models.json");
+        Self::from_model(name, json)
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -432,5 +482,28 @@ mod tests {
         assert_eq!(restored.g, cal.g);
         assert_eq!(restored.strength, cal.strength);
         assert_eq!(restored.estimate("test"), cal.estimate("test"));
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_from_model() {
+        let json = r#"{
+            "models": {
+                "test-model": {
+                    "a": [[1000,0,0,0],[0,1000,0,0],[0,0,1000,0],[0,0,0,1000]],
+                    "g": [1000,250,400,600],
+                    "strength": 1000
+                }
+            }
+        }"#;
+        let mut cal = TokenCalibrator::from_model("test-model", json).unwrap();
+        assert_eq!(cal.estimate("Hello world"), 3);
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_from_model_missing() {
+        let json = r#"{"models": {}}"#;
+        assert!(TokenCalibrator::from_model("nonexistent", json).is_none());
     }
 }

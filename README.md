@@ -96,6 +96,22 @@ Because the system is 4×4, the solve uses Gauss‑Jordan elimination directly
 (inversion-free). Exponential forgetting (`γ`) is supported for streaming
 environments where the model may drift.
 
+## Pre-trained model snapshots
+
+Instead of starting from generic priors, you can initialise a calibrator with
+a **community-contributed snapshot** for your specific model. Snapshots are
+stored in [`models/models.json`](./models/models.json).
+
+```python
+import json
+
+with open("models/models.json") as f:
+    cal = TokenCalibrator.from_model("gpt-4o", f.read())
+```
+
+> **Contribute your own trained snapshot!** See
+> [`CONTRIBUTING.md`](./CONTRIBUTING.md) for instructions.
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).

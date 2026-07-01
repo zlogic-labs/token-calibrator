@@ -11,6 +11,7 @@
 package calibrator
 
 import (
+	"encoding/json"
 	"math"
 )
 
@@ -333,4 +334,37 @@ func (c *TokenCalibrator) Snapshot() TokenCalibratorSnapshot {
 		G:        c.g,
 		Strength: c.strength,
 	}
+}
+
+// ModelFileEntry is a single model entry in the models.json format.
+type ModelFileEntry struct {
+	A        Matrix4     `json:"a"`
+	G        Coefficients `json:"g"`
+	Strength float64     `json:"strength"`
+}
+
+// NewTokenCalibratorFromModel reads a models.json-format byte slice and
+// returns a calibrator seeded with the snapshot for the given model name.
+// If the model is not found or the JSON is malformed, it returns a nil
+// calibrator — callers can fall back to NewTokenCalibrator.
+func NewTokenCalibratorFromModel(name string, jsonData []byte) *TokenCalibrator {
+	var file struct {
+		Models map[string]ModelFileEntry `json:"models"`
+	}
+	if err := json.Unmarshal(jsonData, &file); err != nil {
+		return nil
+	}
+	entry, ok := file.Models[name]
+	if !ok {
+		return nil
+	}
+	snap := TokenCalibratorSnapshot{
+		A:        entry.A,
+		G:        entry.G,
+		Strength: entry.Strength,
+	}
+	if !isValidSnapshot(&snap) {
+		return nil
+	}
+	return NewTokenCalibrator(TokenCalibratorOptions{}, &snap)
 }
