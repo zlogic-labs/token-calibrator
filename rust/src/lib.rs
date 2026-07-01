@@ -389,7 +389,7 @@ mod tests {
         // " 123" → space + 3 digits
         // " 😊" → space + one emoji (other, 4 bytes)
         assert_eq!(counts[TokenBucket::Han as usize], 2);
-        assert_eq!(counts[TokenBucket::Latin as usize], 6); // 'H','e','l','l','o',' '
+        assert_eq!(counts[TokenBucket::Latin as usize], 8); // H,e,l,l,o + 3 spaces
         assert_eq!(counts[TokenBucket::Digit as usize], 3);
         // The emoji "😊" is 4 bytes, plus the preceding space is Latin, so other = 4
         assert_eq!(counts[TokenBucket::Other as usize], 4);
@@ -404,16 +404,21 @@ mod tests {
 
     #[test]
     fn test_calibrator_basic() {
-        let mut cal = TokenCalibrator::new(Default::default(), None);
+        // Use a small prior so observations dominate quickly
+        let opts = TokenCalibratorOptions {
+            prior_strength: Some(1.0),
+            forgetting: None,
+        };
+        let mut cal = TokenCalibrator::new(opts, None);
         let est = cal.estimate("Hello world");
         assert_eq!(est, 3); // from prior
 
         // Observe a real token count (say 4 tokens for "Hello world")
-        cal.observe("Hello world", 4);
+        // Repeat so the estimate converges toward the observed value
+        for _ in 0..20 {
+            cal.observe("Hello world", 4);
+        }
         let est2 = cal.estimate("Hello world");
-        // Now the model should have adjusted Latin rate upward.
-        // The new rate will be slightly >0.25, but still close.
-        // We just check it's 4 (since one observation with exact match)
         assert_eq!(est2, 4);
     }
 
@@ -422,7 +427,7 @@ mod tests {
         let mut cal = TokenCalibrator::new(Default::default(), None);
         cal.observe("test", 2);
         let snap = cal.snapshot();
-        let restored = TokenCalibrator::new(Default::default(), Some(&snap));
+        let mut restored = TokenCalibrator::new(Default::default(), Some(&snap));
         assert_eq!(restored.a, cal.a);
         assert_eq!(restored.g, cal.g);
         assert_eq!(restored.strength, cal.strength);

@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=75"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "token-calibrator"
@@ -14,3 +14,6 @@ requires-python = ">=3.10"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
