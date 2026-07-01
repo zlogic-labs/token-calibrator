@@ -13,11 +13,11 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/zlogic/token-calibrator/go/calibrator"
+	calibrator "github.com/zlogic/token-calibrator/go"
 )
 
 func main() {
-	fmt.Println("=== token-calibrator demo (Go) ===\n")
+	fmt.Println("=== token-calibrator demo (Go) ===")
 
 	// Resolve path to models/models.json relative to this source file
 	_, srcFile, _, _ := runtime.Caller(0)
