@@ -163,8 +163,8 @@ pub fn solve_linear_system(a: Matrix4, b: Coefficients) -> Coefficients {
             if factor.abs() < 1e-18 {
                 continue;
             }
-            for c in col..=n {
-                aug[r][c] -= factor * aug[col][c];
+            for (dest, src) in aug[r][col..=n].iter_mut().zip(aug[col][col..=n].iter()) {
+                *dest -= factor * *src;
             }
         }
     }
@@ -207,21 +207,12 @@ pub fn is_valid_snapshot(snap: &TokenCalibratorSnapshot) -> bool {
 }
 
 /// Options for creating a calibrator.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct TokenCalibratorOptions {
     /// Prior strength (larger = stickier priors). Default `DEFAULT_PRIOR_STRENGTH`.
     pub prior_strength: Option<f64>,
     /// Exponential forgetting factor in `(0,1]`. `1.0` = no forgetting (default).
     pub forgetting: Option<f64>,
-}
-
-impl Default for TokenCalibratorOptions {
-    fn default() -> Self {
-        Self {
-            prior_strength: None,
-            forgetting: None,
-        }
-    }
 }
 
 // -----------------------------------------------------------------------------
@@ -279,17 +270,17 @@ impl TokenCalibrator {
 
     /// Add the ridge prior (λ·I on the diagonal, λ·prior on the RHS).
     fn seed_priors(&mut self) {
-        for j in 0..N_BUCKETS {
+        for (j, &prior) in TOKEN_BUCKET_PRIORS.iter().enumerate() {
             self.a[j][j] += self.strength;
-            self.g[j] += self.strength * TOKEN_BUCKET_PRIORS[j];
+            self.g[j] += self.strength * prior;
         }
     }
 
     /// Remove the ridge prior from the accumulated statistics.
     fn strip_priors(&mut self) {
-        for j in 0..N_BUCKETS {
+        for (j, &prior) in TOKEN_BUCKET_PRIORS.iter().enumerate() {
             self.a[j][j] -= self.strength;
-            self.g[j] -= self.strength * TOKEN_BUCKET_PRIORS[j];
+            self.g[j] -= self.strength * prior;
         }
     }
 
