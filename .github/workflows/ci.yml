@@ -96,11 +96,8 @@ jobs:
         working-directory: python
       - run: python -m build
         working-directory: python
-      - run: twine upload dist/*
-        working-directory: python
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
