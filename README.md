@@ -1,106 +1,230 @@
 # token-calibrator
 
-**Calibrated, self-learning token estimator for live context-size display.**
+**Tokenizer-free token estimation for any LLM.**
 
-No bundled tokenizer. Works with any LLM by learning per-character token rates
-from real usage observations via online ridge regression.
+> Learn the tokenizer instead of shipping the tokenizer.
+
+Instead of shipping a tokenizer, **token-calibrator** learns how your model
+tokenizes text from real API usage. Estimates become more accurate over time,
+without vendor-specific code or tokenizer updates.
+
+Works with GPT, Claude, Gemini, DeepSeek, Qwen, Llama, Mistral, and future
+models.
 
 ---
 
-## Core idea
+## Why?
 
-Most context-size estimators hard-code a single token/char ratio (e.g., 0.25×
-the character count). This is fragile — different models tokenize very
-differently. The token-calibrator takes a different approach:
+Most LLM applications only need an approximate token count to:
 
-1. **Classify** each character into one of four buckets — **Han** (CJK
-   ideographs), **Latin** (ASCII + Latin‑1 supplement), **Digit**, and
-   **Other** (counted in UTF‑8 bytes).
-2. **Learn** per-bucket token rates via **online ridge regression**, seeded
-   with reasonable priors.
-3. **Estimate** token count = Σ rate_bucket × count_bucket.
-4. **Adapt** as you feed real token counts back via `observe()`.
+* Display live context usage
+* Estimate API cost
+* Warn before exceeding context limits
+* Budget prompts while editing
 
-The result: estimates converge toward whatever tokenizer the active model
-actually uses, with no vendor-specific config and no bundled tokenizer.
+The traditional solution is to bundle a tokenizer for every supported model.
+That works—but it comes with trade-offs.
+
+| Traditional tokenizer          | token-calibrator          |
+| ------------------------------ | ------------------------- |
+| Bundled tokenizer              | No tokenizer              |
+| Model-specific                 | Model-agnostic            |
+| Requires tokenizer updates     | Learns automatically      |
+| Large vocabulary tables        | Four learned coefficients |
+| Doesn't support unknown models | Works with future models  |
+
+Instead of reproducing a tokenizer, token-calibrator learns the relationship
+between text and token counts directly from your provider's responses.
+
+---
+
+## Features
+
+* 🚀 Tokenizer-free
+* 🤖 Works with any LLM
+* 📈 Learns continuously from real API responses
+* 🧠 Online ridge regression with configurable forgetting
+* 💾 Tiny memory footprint (only four learned coefficients)
+* 📦 Serializable model snapshots
+* ⚡ Streaming-friendly
+* 🌍 Available for TypeScript, Rust, Python, and Go
+
+---
+
+## How it works
+
+```text
+             Input text
+                  │
+                  ▼
+      Character classification
+ Han / Latin / Digit / Other
+                  │
+                  ▼
+      Current coefficients
+                  │
+                  ▼
+      Estimated token count
+                  │
+                  ▼
+     observe(actual_tokens)
+                  │
+                  ▼
+      Online ridge regression
+```
+
+Each observation adjusts the coefficients slightly, making future estimates
+better match the tokenizer actually used by your model.
+
+---
 
 ## Languages
 
-| Language | Package | Location |
-|----------|---------|----------|
-| **TypeScript** | npm (`token-calibrator`) | [`ts/`](./ts/) |
-| **Python** | PyPI (`token-calibrator`) | [`python/`](./python/) |
-| **Rust** | crates.io (`token-calibrator`) | [`rust/`](./rust/) |
-| **Go** | `go get github.com/zlogic/token-calibrator/go` | [`go/`](./go/) |
+| Language       | Package                                        | Install                                | Location               |
+| -------------- | ---------------------------------------------- | -------------------------------------- | ---------------------- |
+| **TypeScript** | npm (`@zlogic/token-calibrator`)               | `npm install @zlogic/token-calibrator` | [`ts/`](./ts/)         |
+| **Python**     | PyPI (`token-calibrator`)                      | `pip install token-calibrator`         | [`python/`](./python/) |
+| **Rust**       | crates.io (`token-calibrator`)                 | `cargo add token-calibrator`           | [`rust/`](./rust/)     |
+| **Go**         | `go get github.com/zlogic/token-calibrator/go` | `go get github.com/zlogic/...`         | [`go/`](./go/)         |
+
+---
 
 ## Quick start
 
 ### TypeScript
+
+```bash
+npm install @zlogic/token-calibrator
+```
+
 ```ts
-import { TokenCalibrator } from 'token-calibrator';
+import { TokenCalibrator } from "@zlogic/token-calibrator";
 
 const cal = new TokenCalibrator();
-console.log(cal.estimate("Hello 世界")); // 7 (from priors)
 
-// Feed real token count from the provider
-cal.observe("Hello 世界", 8);
-console.log(cal.estimate("Hello 世界")); // 8 (adjusted)
+const estimate = cal.estimate(prompt);
+
+// Feed the actual token count returned by your LLM provider.
+cal.observe(prompt, actualTokens);
+
+// Future estimates become more accurate.
+```
+
+### Python
+
+```bash
+pip install token-calibrator
+```
+
+```python
+from token_calibrator import TokenCalibrator
+
+cal = TokenCalibrator()
+estimate = cal.estimate(prompt)
+
+cal.observe(prompt, actual_tokens)
 ```
 
 ### Rust
+
+```bash
+cargo add token-calibrator
+```
+
 ```rust
 use token_calibrator::TokenCalibrator;
 
 let mut cal = TokenCalibrator::new(Default::default(), None);
-println!("{}", cal.estimate("Hello 世界")); // 7
 
-cal.observe("Hello 世界", 8);
-println!("{}", cal.estimate("Hello 世界")); // 8
+let estimate = cal.estimate(prompt);
+
+cal.observe(prompt, actual_tokens);
 ```
 
 ### Go
+
+```bash
+go get github.com/zlogic/token-calibrator/go
+```
+
 ```go
 import "github.com/zlogic/token-calibrator/go/calibrator"
 
-cal := calibrator.NewTokenCalibrator(...)
+cal := calibrator.NewTokenCalibrator(calibrator.TokenCalibratorOptions{}, nil)
+estimate := cal.Estimate(prompt)
+cal.Observe(prompt, actualTokens)
 ```
+
+---
 
 ## Examples
 
-Run a full walkthrough in your language of choice:
+Run a complete walkthrough in your language of choice.
 
-| Language | Command |
-|----------|---------|
-| **Rust** | `cargo run --example demo` (from `rust/`) |
-| **TypeScript** | `npx tsx examples/demo.ts` (from `ts/`) |
-| **Python** | `python examples/demo.py` (from `python/`) |
-| **Go** | `go run ./cmd/demo` (from `go/`) |
+| Language       | Command                    |
+| -------------- | -------------------------- |
+| **Rust**       | `cargo run --example demo` |
+| **TypeScript** | `npx tsx examples/demo.ts` |
+| **Python**     | `python examples/demo.py`  |
+| **Go**         | `go run ./cmd/demo`        |
 
 Each demo:
-1. Shows prior-based estimates for English, Chinese, and mixed text
-2. Creates a `TokenCalibrator` and observes a few real token counts
-3. Re-estimates the same strings to show the model adapting
-4. Prints the learned per-bucket coefficients
-5. Round-trips a snapshot to prove serialisation works
+
+1. Loads a model snapshot from `models.json` and estimates English, Chinese, and mixed-language text
+2. Feeds real token counts back into the calibrator
+3. Shows estimates improving over time
+4. Prints the learned coefficients
+5. Saves and restores a snapshot
+
+---
+
+## Use cases
+
+Ideal for applications that need fast, lightweight token estimation:
+
+* AI chat clients
+* Agent frameworks
+* IDE extensions
+* Prompt editors
+* Live context meters
+* Cost estimation
+* Token budgeting
+* Streaming interfaces
+
+---
 
 ## Algorithm
 
-The model is `tokens ≈ Σ_bucket α_bucket · count_bucket`, fit by solving the
-normal equations `(X^T X + λI) α = X^T y`, where:
+The estimator models:
 
-- `X` is the design matrix of bucket counts (one row per observed round),
-- `y` is the vector of observed token counts,
-- `λ` is the ridge penalty (prior strength).
+```text
+tokens ≈ Σ αᵢ × bucket_countᵢ
+```
 
-Because the system is 4×4, the solve uses Gauss‑Jordan elimination directly
-(inversion-free). Exponential forgetting (`γ`) is supported for streaming
-environments where the model may drift.
+Characters are grouped into four buckets:
+
+* **Han** (CJK ideographs)
+* **Latin** (ASCII + Latin-1 Supplement)
+* **Digit**
+* **Other** (measured in UTF-8 bytes)
+
+The coefficients are learned using online ridge regression by solving:
+
+```text
+(XᵀX + λI)α = Xᵀy
+```
+
+Because there are only four coefficients, the system solves a fixed 4×4 linear
+system using Gauss–Jordan elimination. Exponential forgetting (`γ`) is
+supported for streaming environments where tokenizer behavior may drift over
+time.
+
+---
 
 ## Pre-trained model snapshots
 
-Instead of starting from generic priors, you can initialise a calibrator with
-a **community-contributed snapshot** for your specific model. Snapshots are
-stored in [`models/models.json`](./models/models.json).
+Instead of starting from generic priors, you can initialize a calibrator with a
+community-contributed snapshot trained for a specific model.
 
 ```python
 import json
@@ -109,8 +233,13 @@ with open("models/models.json") as f:
     cal = TokenCalibrator.from_model("gpt-4o", f.read())
 ```
 
-> **Contribute your own trained snapshot!** See
-> [`CONTRIBUTING.md`](./CONTRIBUTING.md) for instructions.
+Snapshots provide a better starting point while still allowing the estimator to
+continue learning from future observations.
+
+Contributions of additional trained snapshots are welcome. See
+[`CONTRIBUTING.md`](./CONTRIBUTING.md).
+
+---
 
 ## License
 

@@ -1,5 +1,5 @@
 {
-  "name": "token-calibrator",
+  "name": "@zlogic/token-calibrator",
   "version": "0.1.0",
   "description": "Calibrated, self-learning token estimator for live context-size display",
   "license": "MIT",
@@ -10,6 +10,9 @@
   "keywords": ["token", "estimator", "llm", "regression"],
   "main": "src/calibrator.ts",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "test": "vitest run",
     "build": "tsc"
