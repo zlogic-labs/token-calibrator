@@ -1,0 +1,35 @@
+# --- Rust ---
+rust/target/
+rust/Cargo.lock
+
+# --- TypeScript / Node ---
+ts/node_modules/
+ts/dist/
+ts/*.tsbuildinfo
+ts/package-lock.json
+ts/yarn.lock
+ts/pnpm-lock.yaml
+
+# --- Python ---
+python/__pycache__/
+python/*.egg-info/
+python/dist/
+python/build/
+python/.venv/
+python/venv/
+python/.pytest_cache/
+python/*.pyc
+python/.eggs/
+
+# --- Go ---
+go/bin/
+go/vendor/
+
+# --- IDE / Editor ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
