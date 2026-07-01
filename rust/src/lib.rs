@@ -163,8 +163,18 @@ pub fn solve_linear_system(a: Matrix4, b: Coefficients) -> Coefficients {
             if factor.abs() < 1e-18 {
                 continue;
             }
-            for c in col..=n {
-                aug[r][c] -= factor * aug[col][c];
+            // r != col guaranteed above → split_at_mut puts the two rows in
+            // disjoint slices so we can iterate immutably on one and mutably
+            // on the other without borrowing the same array twice.
+            let (row_r, row_col) = if r < col {
+                let (left, right) = aug.split_at_mut(col);
+                (&mut left[r][col..=n], &right[0][col..=n])
+            } else {
+                let (left, right) = aug.split_at_mut(r);
+                (&mut right[0][col..=n], &left[col][col..=n])
+            };
+            for (dest, src) in row_r.iter_mut().zip(row_col.iter()) {
+                *dest -= factor * *src;
             }
         }
     }
@@ -473,6 +483,65 @@ mod tests {
         assert_eq!(restored.g, cal.g);
         assert_eq!(restored.strength, cal.strength);
         assert_eq!(restored.estimate("test"), cal.estimate("test"));
+    }
+
+    #[test]
+    fn test_solve_linear_system() {
+        // Identity matrix: A·x = b ⟹ x = b
+        let a: Matrix4 = [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ];
+        let b: Coefficients = [2.0, 3.0, 4.0, 5.0];
+        let x = solve_linear_system(a, b);
+        assert_eq!(x, b);
+    }
+
+    #[test]
+    fn test_is_valid_snapshot() {
+        // Valid snapshot
+        let snap = TokenCalibratorSnapshot {
+            a: [[1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0]],
+            g: [1.0, 2.0, 3.0, 4.0],
+            strength: 1000.0,
+        };
+        assert!(is_valid_snapshot(&snap));
+
+        // Zero strength → invalid
+        let snap = TokenCalibratorSnapshot { strength: 0.0, ..snap };
+        assert!(!is_valid_snapshot(&snap));
+
+        // NaN strength → invalid
+        let snap = TokenCalibratorSnapshot { strength: f64::NAN, ..snap };
+        assert!(!is_valid_snapshot(&snap));
+
+        // Inf strength → invalid
+        let snap = TokenCalibratorSnapshot { strength: f64::INFINITY, ..snap };
+        assert!(!is_valid_snapshot(&snap));
+
+        // NaN in g → invalid
+        let snap = TokenCalibratorSnapshot {
+            strength: 1000.0,
+            g: [1.0, f64::NAN, 3.0, 4.0],
+            ..snap
+        };
+        assert!(!is_valid_snapshot(&snap));
+
+        // NaN in a → invalid
+        let snap = TokenCalibratorSnapshot {
+            g: [1.0, 2.0, 3.0, 4.0],
+            a: [[1.0, f64::NAN, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0]],
+            ..snap
+        };
+        assert!(!is_valid_snapshot(&snap));
     }
 
     #[cfg(feature = "serde")]
