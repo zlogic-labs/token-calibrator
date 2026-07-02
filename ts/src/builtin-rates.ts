@@ -1,4 +1,4 @@
-import {TokenRates} from "./index.js";
+import { TokenRates } from './buckets.js';
 
 export const BUILTIN_TOKEN_RATES: Record<string, TokenRates> = {
   "deepseek-chat": {

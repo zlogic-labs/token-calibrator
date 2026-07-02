@@ -36,7 +36,7 @@ pub fn accumulate(
     real_tokens: f64,
     forgetting: Option<f64>,
 ) -> TokenAccumulator {
-    if !(real_tokens > 0.0) {
+    if real_tokens <= 0.0 {
         return acc.clone();
     }
     let x = feature_vector(&classify_token_buckets(input));
@@ -55,13 +55,13 @@ pub fn accumulate(
     for i in 0..N_BUCKETS {
         if gamma < 1.0 {
             g[i] *= gamma;
-            for j in 0..N_BUCKETS {
-                a[i][j] *= gamma;
+            for a_ij in a[i].iter_mut() {
+                *a_ij *= gamma;
             }
         }
         g[i] += x[i] * real_tokens;
-        for j in 0..N_BUCKETS {
-            a[i][j] += x[i] * x[j];
+        for (j, xj) in x.iter().enumerate() {
+            a[i][j] += x[i] * xj;
         }
     }
 
@@ -164,6 +164,7 @@ fn solve_linear_system(a: &[[f64; N_BUCKETS]; N_BUCKETS], b: &[f64; N_BUCKETS]) 
             if factor == 0.0 {
                 continue;
             }
+            #[allow(clippy::needless_range_loop)]
             for c in col..=n {
                 m[r][c] -= factor * m[col][c];
             }

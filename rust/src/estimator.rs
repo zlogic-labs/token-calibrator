@@ -9,21 +9,11 @@ use crate::calibration::{is_valid_accumulator, rates_from_accumulator, TokenAccu
 use crate::builtin_rates::BUILTIN_TOKEN_RATES;
 
 /// Options for constructing a `TokenEstimator`.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct TokenEstimatorOptions<'a> {
     pub prior_strength: Option<f64>,
     pub baseline: Option<&'a HashMap<String, TokenRates>>,
     pub prior: Option<TokenRates>,
-}
-
-impl Default for TokenEstimatorOptions<'_> {
-    fn default() -> Self {
-        TokenEstimatorOptions {
-            prior_strength: None,
-            baseline: None,
-            prior: None,
-        }
-    }
 }
 
 /// Read-only, per-model estimator. Three-tier fallback per model:
