@@ -161,7 +161,7 @@ export function isValidAccumulator(acc: unknown): acc is TokenAccumulator {
  * With the ridge term added the matrix is positive-definite, so this is
  * stable; a singular column is skipped (its unknown stays 0).
  */
-function solveLinearSystem(a: number[][], b: number[]): number[] {
+export function solveLinearSystem(a: number[][], b: number[]): number[] {
   const n = b.length;
   const m = a.map((row, i) => [...row, b[i]]);
 

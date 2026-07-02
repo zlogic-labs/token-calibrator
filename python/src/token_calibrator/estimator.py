@@ -7,11 +7,19 @@ object spread); derives + caches each model's rates up front. Pure math is in
 
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from .buckets import estimate_tokens, TOKEN_BUCKET_PRIORS, TokenRates
 from .calibration import is_valid_accumulator, rates_from_accumulator, TokenAccumulator
 from .builtin_rates import BUILTIN_TOKEN_RATES
+
+def _get_opt(opts: Any, key: str, default: Any = None) -> Any:
+    """Extract an option from either a dict or an object."""
+    if opts is None:
+        return default
+    if isinstance(opts, dict):
+        return opts.get(key, default)
+    return getattr(opts, key, default)
 
 
 class TokenEstimatorOptions:
@@ -37,18 +45,17 @@ class TokenEstimator:
     def __init__(
         self,
         matrices: Optional[Dict[str, TokenAccumulator]] = None,
-        opts: Optional[TokenEstimatorOptions] = None,
+        opts: Any = None,
     ) -> None:
         self._rates_by_model: Dict[str, TokenRates] = {}
 
-        if opts is not None:
-            self._baseline: Dict[str, TokenRates] = opts.baseline if opts.baseline is not None else BUILTIN_TOKEN_RATES
-            self._prior: TokenRates = opts.prior if opts.prior is not None else TOKEN_BUCKET_PRIORS
-            self._prior_strength: Optional[float] = opts.priorStrength
-        else:
-            self._baseline = BUILTIN_TOKEN_RATES
-            self._prior = TOKEN_BUCKET_PRIORS
-            self._prior_strength = None
+        bl = _get_opt(opts, "baseline")
+        self._baseline: Dict[str, TokenRates] = bl if bl is not None else BUILTIN_TOKEN_RATES
+
+        pr = _get_opt(opts, "prior")
+        self._prior: TokenRates = pr if pr is not None else TOKEN_BUCKET_PRIORS
+
+        self._prior_strength: Optional[float] = _get_opt(opts, "priorStrength")
 
         if matrices is not None:
             for model, acc in matrices.items():

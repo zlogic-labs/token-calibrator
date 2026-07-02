@@ -11,7 +11,7 @@ ts/yarn.lock
 ts/pnpm-lock.yaml
 
 # --- Python ---
-python/__pycache__/
+**/__pycache__/
 python/*.egg-info/
 python/src/*.egg-info/
 python/dist/
