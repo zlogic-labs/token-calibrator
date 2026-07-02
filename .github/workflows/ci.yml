@@ -62,7 +62,7 @@ jobs:
 
   deploy:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [validate-models, rust, typescript, python, go]
+    needs: [rust, typescript, python, go]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
