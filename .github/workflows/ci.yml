@@ -130,6 +130,8 @@ jobs:
   py-deploy:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: [validate-deploy]
+    permissions:
+      id-token: write
     runs-on: ubuntu-latest
     defaults:
       run:
