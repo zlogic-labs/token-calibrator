@@ -2,13 +2,13 @@
  * token-calibrator demo
  *
  * Demonstrates two usage modes:
- *   1. Train mode  — feed sample observations and export the accumulator
- *   2. Estimate mode — load trained data (or use built-in models) and estimate
+ *   1. Calibrate mode  — feed sample observations and export the accumulator
+ *   2. Estimate mode — load calibrated data (or use built-in models) and estimate
  *
  * Usage:
- *   npx tsx examples/demo.ts train        # train & export to trained-snapshot.json
- *   npx tsx examples/demo.ts estimate     # estimate using built-in models
- *   npx tsx examples/demo.ts estimate trained-snapshot.json  # use custom snapshot
+ *   npx tsx examples/demo.ts calibrate        # calibrate & export to calibrated-snapshot.json
+ *   npx tsx examples/demo.ts estimate         # estimate using built-in models
+ *   npx tsx examples/demo.ts estimate calibrated-snapshot.json  # use custom snapshot
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { TokenCalibrator } from '../src/calibrator.js';
@@ -17,10 +17,10 @@ import { BUILTIN_TOKEN_RATES } from '../src/builtin-rates.js';
 import { classifyTokenBuckets, estimateTokens } from '../src/buckets.js';
 import type { TokenAccumulator } from '../src/calibration.js';
 
-// ───────────────────────── Train mode ─────────────────────────
+// ────────────────────── Calibrate mode ──────────────────────
 
-function cmdTrain(): void {
-  console.log('=== Train mode ===\n');
+function cmdCalibrate(): void {
+  console.log('=== Calibrate mode ===\n');
 
   // Create a calibrator with a small prior strength so data dominates quickly.
   const cal = new TokenCalibrator({ priorStrength: 1_000 });
@@ -53,7 +53,7 @@ function cmdTrain(): void {
   }
 
   // Estimate a few samples.
-  console.log('\nEstimates after training:');
+  console.log('\nEstimates after calibration:');
   for (const text of ['Hello world', '你好', 'Mixed 你好 123 😊']) {
     console.log(`  ${JSON.stringify(text).padEnd(30)} → ${cal.estimate(text)} tokens`);
   }
@@ -61,8 +61,8 @@ function cmdTrain(): void {
   // Export accumulator to file.
   const matrix = cal.toMatrix();
   const snapshot: Record<string, TokenAccumulator> = { 'demo-model': matrix };
-  writeFileSync('trained-snapshot.json', JSON.stringify({ models: snapshot }, null, 2));
-  console.log('\nExported accumulator to trained-snapshot.json\n');
+  writeFileSync('calibrated-snapshot.json', JSON.stringify({ models: snapshot }, null, 2));
+  console.log('\nExported accumulator to calibrated-snapshot.json\n');
 }
 
 // ───────────────────── Estimate mode ─────────────────────
@@ -125,8 +125,8 @@ const arg = process.argv[3];
 
 console.log(`token-calibrator demo (mode: ${mode})\n`);
 
-if (mode === 'train') {
-  cmdTrain();
+if (mode === 'calibrate') {
+  cmdCalibrate();
 } else {
   cmdEstimate(arg);
 }

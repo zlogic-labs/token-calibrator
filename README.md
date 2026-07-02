@@ -200,17 +200,17 @@ tokens := estimator.Estimate("gpt-4o", prompt)
 
 Run a complete walkthrough in your language of choice. The demo has two modes:
 
-- **train** — feeds sample observations, shows learned rates, exports accumulator to `trained-snapshot.json`
-- **estimate** — loads trained data (or uses built-in models) and estimates token counts for several text types
+- **calibrate** — feeds sample observations, shows learned rates, exports accumulator to `calibrated-snapshot.json`
+- **estimate** — loads calibrated data (or uses built-in models) and estimates token counts for several text types
 
-| Language       | Command (train)                              | Command (estimate)                                  |
+| Language       | Command (calibrate)                          | Command (estimate)                                  |
 | -------------- | -------------------------------------------- | --------------------------------------------------- |
-| **TypeScript** | `npx tsx examples/demo.ts train`             | `npx tsx examples/demo.ts estimate [file]`          |
-| **Python**     | `python examples/demo.py train`              | `python examples/demo.py estimate [file]`           |
-| **Rust**       | `cargo run --example demo train`             | `cargo run --example demo estimate [file]`          |
-| **Go**         | `go run ./cmd/demo train`                    | `go run ./cmd/demo estimate [file]`                 |
+| **TypeScript** | `npx tsx examples/demo.ts calibrate`         | `npx tsx examples/demo.ts estimate [file]`          |
+| **Python**     | `python examples/demo.py calibrate`          | `python examples/demo.py estimate [file]`           |
+| **Rust**       | `cargo run --example demo calibrate`         | `cargo run --example demo estimate [file]`          |
+| **Go**         | `go run ./cmd/demo calibrate`                | `go run ./cmd/demo estimate [file]`                 |
 
-The **train** output:
+The **calibrate** output:
 1. Shows each observation with its per-bucket classification
 2. Prints the learned per-bucket rates
 3. Shows estimated tokens for a few test strings

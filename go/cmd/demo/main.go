@@ -19,8 +19,8 @@ func main() {
 	fmt.Printf("token-calibrator demo (mode: %s)\n\n", mode)
 
 	switch mode {
-	case "train":
-		cmdTrain()
+	case "calibrate":
+		cmdCalibrate()
 	default:
 		snapshotPath := ""
 		if len(args) > 1 {
@@ -30,10 +30,10 @@ func main() {
 	}
 }
 
-// ───────────────────────── Train mode ─────────────────────────
+// ────────────────────── Calibrate mode ──────────────────────
 
-func cmdTrain() {
-	fmt.Println("=== Train mode ===")
+func cmdCalibrate() {
+	fmt.Println("=== Calibrate mode ===")
 	fmt.Println()
 
 	strength := 1000.0
@@ -76,7 +76,7 @@ func cmdTrain() {
 	}
 
 	fmt.Println()
-	fmt.Println("Estimates after training:")
+	fmt.Println("Estimates after calibration:")
 	for _, text := range []string{"Hello world", "你好", "Mixed 你好 123 😊"} {
 		fmt.Printf("  %-30q → %d tokens\n", text, cal.Estimate(text))
 	}
@@ -88,9 +88,9 @@ func cmdTrain() {
 		},
 	}
 	data, _ := json.MarshalIndent(snapshot, "", "  ")
-	os.WriteFile("trained-snapshot.json", data, 0644)
+	os.WriteFile("calibrated-snapshot.json", data, 0644)
 	fmt.Println()
-	fmt.Println("Exported accumulator to trained-snapshot.json")
+	fmt.Println("Exported accumulator to calibrated-snapshot.json")
 	fmt.Println()
 }
 

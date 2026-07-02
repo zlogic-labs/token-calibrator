@@ -1,13 +1,13 @@
 //! token-calibrator demo
 //!
 //! Demonstrates two usage modes:
-//!   1. Train mode  — feed sample observations and export the accumulator
-//!   2. Estimate mode — load trained data (or use built-in models) and estimate
+//!   1. Calibrate mode  — feed sample observations and export the accumulator
+//!   2. Estimate mode — load calibrated data (or use built-in models) and estimate
 //!
 //! Usage:
-//!   cargo run --example demo train              # train & export
-//!   cargo run --example demo estimate           # estimate using built-in models
-//!   cargo run --example demo estimate trained-snapshot.json  # use custom snapshot
+//!   cargo run --example demo calibrate              # calibrate & export
+//!   cargo run --example demo estimate               # estimate using built-in models
+//!   cargo run --example demo estimate calibrated-snapshot.json  # use custom snapshot
 
 use std::collections::HashMap;
 use std::env;
@@ -20,10 +20,10 @@ use token_calibrator::{
     TokenAccumulator, BUILTIN_TOKEN_RATES,
 };
 
-// ───────────────────────── Train mode ─────────────────────────
+// ────────────────────── Calibrate mode ──────────────────────
 
-fn cmd_train() {
-    println!("=== Train mode ===\n");
+fn cmd_calibrate() {
+    println!("=== Calibrate mode ===\n");
 
     let mut cal = TokenCalibrator::new(TokenCalibratorOptions {
         prior_strength: Some(1_000.0),
@@ -55,7 +55,7 @@ fn cmd_train() {
         println!("  {:<10} {:.4}", k, rates[k]);
     }
 
-    println!("\nEstimates after training:");
+    println!("\nEstimates after calibration:");
     let test_texts = ["Hello world", "你好", "Mixed 你好 123 😊"];
     for text in &test_texts {
         println!("  {:?}  →  {} tokens", text, cal.estimate(text));
@@ -65,9 +65,9 @@ fn cmd_train() {
     let snapshot = serde_json::json!({
         "models": { "demo-model": matrix }
     });
-    fs::write("trained-snapshot.json", serde_json::to_string_pretty(&snapshot).unwrap())
+    fs::write("calibrated-snapshot.json", serde_json::to_string_pretty(&snapshot).unwrap())
         .expect("failed to write snapshot");
-    println!("\nExported accumulator to trained-snapshot.json\n");
+    println!("\nExported accumulator to calibrated-snapshot.json\n");
 }
 
 // ───────────────────── Estimate mode ─────────────────────
@@ -144,7 +144,7 @@ fn main() {
     println!("token-calibrator demo (mode: {})\n", mode);
 
     match mode {
-        "train" => cmd_train(),
+        "calibrate" => cmd_calibrate(),
         _ => cmd_estimate(arg),
     }
 }

@@ -122,18 +122,18 @@ All four implementations should expose the same public API:
 
 ```bash
 # TypeScript
-npx tsx ts/examples/demo.ts train
+npx tsx ts/examples/demo.ts calibrate
 npx tsx ts/examples/demo.ts estimate
 
 # Python
-python python/examples/demo.py train
+python python/examples/demo.py calibrate
 python python/examples/demo.py estimate
 
 # Rust
-cargo run --manifest-path rust/Cargo.toml --example demo train
+cargo run --manifest-path rust/Cargo.toml --example demo calibrate
 cargo run --manifest-path rust/Cargo.toml --example demo estimate
 
 # Go
-go run ./go/cmd/demo train
+go run ./go/cmd/demo calibrate
 go run ./go/cmd/demo estimate
 ```

@@ -2,13 +2,13 @@
 token-calibrator demo
 
 Demonstrates two usage modes:
-  1. Train mode  — feed sample observations and export the accumulator
-  2. Estimate mode — load trained data (or use built-in models) and estimate
+  1. Calibrate mode  — feed sample observations and export the accumulator
+  2. Estimate mode — load calibrated data (or use built-in models) and estimate
 
 Usage:
-    python examples/demo.py train              # train & export to trained-snapshot.json
-    python examples/demo.py estimate           # estimate using built-in models
-    python examples/demo.py estimate trained-snapshot.json  # use custom snapshot
+    python examples/demo.py calibrate               # calibrate & export to calibrated-snapshot.json
+    python examples/demo.py estimate                # estimate using built-in models
+    python examples/demo.py estimate calibrated-snapshot.json  # use custom snapshot
 """
 
 import json
@@ -25,10 +25,10 @@ from token_calibrator import (
 )
 
 
-# ───────────────────────── Train mode ─────────────────────────
+# ────────────────────── Calibrate mode ──────────────────────
 
-def cmd_train() -> None:
-    print("=== Train mode ===\n")
+def cmd_calibrate() -> None:
+    print("=== Calibrate mode ===\n")
 
     # Create a calibrator with a small prior strength so data dominates quickly.
     cal = TokenCalibrator({"priorStrength": 1_000})
@@ -57,16 +57,16 @@ def cmd_train() -> None:
         print(f"  {bucket:<10} {rate:.4f}")
 
     # Estimate a few samples.
-    print("\nEstimates after training:")
+    print("\nEstimates after calibration:")
     for text in ["Hello world", "你好", "Mixed 你好 123 😊"]:
         print(f"  {json.dumps(text):<30} → {cal.estimate(text)} tokens")
 
     # Export accumulator to file.
     matrix = cal.to_matrix()
     snapshot = {"models": {"demo-model": matrix}}
-    with open("trained-snapshot.json", "w") as f:
+    with open("calibrated-snapshot.json", "w") as f:
         json.dump(snapshot, f, indent=2)
-    print("\nExported accumulator to trained-snapshot.json\n")
+    print("\nExported accumulator to calibrated-snapshot.json\n")
 
 
 # ───────────────────── Estimate mode ─────────────────────
@@ -125,7 +125,7 @@ if __name__ == "__main__":
 
     print(f"token-calibrator demo (mode: {mode})\n")
 
-    if mode == "train":
-        cmd_train()
+    if mode == "calibrate":
+        cmd_calibrate()
     else:
         cmd_estimate(arg)
