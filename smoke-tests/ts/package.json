@@ -1,0 +1,12 @@
+{
+  "name": "smoke-test-ts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "smoke": "node --experimental-specifier-resolution=node index.js"
+  },
+  "dependencies": {
+    "@zlogic/token-calibrator": "^1.0.1"
+  }
+}
