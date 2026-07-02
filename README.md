@@ -107,7 +107,7 @@ byte-level BPE (≈ 1 token/byte).
 | **TypeScript** | npm (`@zlogic/token-calibrator`)               | `npm install @zlogic/token-calibrator` | [`ts/`](./ts/)         |
 | **Python**     | PyPI (`token-calibrator`)                      | `pip install token-calibrator`         | [`python/`](./python/) |
 | **Rust**       | crates.io (`token-calibrator`)                 | `cargo add token-calibrator`           | [`rust/`](./rust/)     |
-| **Go**         | `go get github.com/zlogic/token-calibrator/go` | `go get github.com/zlogic/...`         | [`go/`](./go/)         |
+| **Go**         | `go get github.com/zlogic-libs/token-calibrator/go` | `go get github.com/zlogic-libs/...`     | [`go/`](./go/)         |
 
 ---
 
@@ -177,11 +177,11 @@ let tokens = estimator.estimate("gpt-4o", prompt);
 ### Go
 
 ```bash
-go get github.com/zlogic/token-calibrator/go
+go get github.com/zlogic-libs/token-calibrator/go
 ```
 
 ```go
-import calibrator "github.com/zlogic/token-calibrator/go"
+import calibrator "github.com/zlogic-libs/token-calibrator/go"
 
 // Train
 cal := calibrator.NewTokenCalibrator(calibrator.TokenCalibratorOptions{})

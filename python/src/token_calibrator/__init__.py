@@ -61,4 +61,4 @@ __all__ = [
     "BUILTIN_TOKEN_RATES",
 ]
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"

@@ -6,7 +6,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/zlogic/token-calibrator/go"
+	"github.com/zlogic-libs/token-calibrator/go"
 )
 
 func main() {

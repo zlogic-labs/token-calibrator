@@ -4,14 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "token-calibrator"
-version = "1.0.0"
+version = "1.0.1"
 description = "Calibrated, self-learning token estimator for live context-size display"
 license = "MIT"
+readme = "README.md"
 keywords = ["token", "estimator", "llm", "regression"]
 requires-python = ">=3.10"
 
 [project.urls]
-repository = "https://github.com/zlogic/token-calibrator"
+repository = "https://github.com/zlogic-labs/token-calibrator"
 
 [tool.setuptools.packages.find]
 where = ["src"]

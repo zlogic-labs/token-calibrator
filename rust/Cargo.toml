@@ -1,10 +1,11 @@
 [package]
 name = "token-calibrator"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 description = "Calibrated, self-learning token estimator for live context-size display"
 license = "MIT"
-repository = "https://github.com/zlogic/token-calibrator"
+repository = "https://github.com/zlogic-labs/token-calibrator"
+readme = "README.md"
 keywords = ["token", "estimator", "tokenizer", "llm", "regression"]
 
 [dependencies]

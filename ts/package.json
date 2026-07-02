@@ -1,14 +1,25 @@
 {
   "name": "@zlogic/token-calibrator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Calibrated, self-learning token estimator for live context-size display",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zlogic/token-calibrator"
+    "url": "https://github.com/zlogic-labs/token-calibrator"
   },
   "keywords": ["token", "estimator", "llm", "regression"],
-  "main": "src/calibrator.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./*": "./dist/*.js"
+  },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "publishConfig": {
     "access": "public"
