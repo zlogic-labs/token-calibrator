@@ -1,81 +1,132 @@
 /**
- * Demo: token-calibrator in action — loading from models.json.
+ * token-calibrator demo
  *
- * Shows how to initialise from a model snapshot file, then learn and
- * export your own snapshot.
+ * Demonstrates two usage modes:
+ *   1. Calibrate mode  — feed sample observations and export the accumulator
+ *   2. Estimate mode — load calibrated data (or use built-in models) and estimate
  *
- * Run: npx tsx examples/demo.ts
+ * Usage:
+ *   npx tsx examples/demo.ts calibrate        # calibrate & export to calibrated-snapshot.json
+ *   npx tsx examples/demo.ts estimate         # estimate using built-in models
+ *   npx tsx examples/demo.ts estimate calibrated-snapshot.json  # use custom snapshot
  */
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { TokenCalibrator } from '../src/calibrator.js';
+import { TokenEstimator } from '../src/estimator.js';
+import { BUILTIN_TOKEN_RATES } from '../src/builtin-rates.js';
+import { classifyTokenBuckets, estimateTokens } from '../src/buckets.js';
+import type { TokenAccumulator } from '../src/calibration.js';
 
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import {
-  TokenCalibrator,
-  estimateTokensFromPriors,
-} from '../src/calibrator.js';
+// ────────────────────── Calibrate mode ──────────────────────
 
-// Resolve path to models/models.json relative to this file
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const modelsPath = join(__dirname, '../../models/models.json');
-const modelsJson = readFileSync(modelsPath, 'utf-8');
+function cmdCalibrate(): void {
+  console.log('=== Calibrate mode ===\n');
 
-const english = "Hello, world! This is a test of the token calibrator.";
-const chinese = "你好世界，这是一个测试。";
-const mixed   = "Hello 你好 123 🎉";
+  // Create a calibrator with a small prior strength so data dominates quickly.
+  const cal = new TokenCalibrator({ priorStrength: 1_000 });
 
-console.log("=== token-calibrator demo (TypeScript) ===\n");
+  // Simulated real usage observations (prompt text, actual token count from API).
+  const observations: [string, number][] = [
+    ['Hello world',                       3],
+    ['The quick brown fox jumps over the lazy dog',  10],
+    ['你好，世界',                         6],
+    ['안녕하세요',                         8],
+    ['Привет мир',                         5],
+    ['123 456 7890',                       6],
+    ['🚀 Token estimation is amazing! 🎉', 12],
+    ['Mixed 你好 Hello 123 😊',             9],
+  ];
 
-// 1. Load from models.json
-console.log("── Load from models.json ──");
-const cal = TokenCalibrator.fromModel('gpt-4o', modelsJson)
-  ?? TokenCalibrator.fromModel('default', modelsJson)!;
-console.log("Loaded model: gpt-4o");
-console.log(`English estimate: ${cal.estimate(english)} tokens`);
-console.log(`Coefficients    :`, cal.coefficients());
+  for (const [text, tokens] of observations) {
+    const counts = classifyTokenBuckets(text);
+    console.log(
+      `  observe: ${JSON.stringify(counts)}  →  ${tokens} tokens  (${JSON.stringify(text)})`,
+    );
+    cal.observe(text, tokens);
+  }
 
-// 2. Compare with stateless priors
-console.log("\n── Stateless priors (no calibration) ──");
-console.log(`English  : ${english.length.toString().padStart(4)} chars → ~${estimateTokensFromPriors(english).toString().padStart(3)} tokens`);
-console.log(`Chinese  : ${[...chinese].length.toString().padStart(4)} chars → ~${estimateTokensFromPriors(chinese).toString().padStart(3)} tokens`);
-console.log(`Mixed    : ${[...mixed].length.toString().padStart(4)} chars → ~${estimateTokensFromPriors(mixed).toString().padStart(3)} tokens`);
+  // Show learned rates.
+  const rates = cal.rates();
+  console.log('\nLearned per-bucket rates:');
+  for (const [bucket, rate] of Object.entries(rates)) {
+    console.log(`  ${bucket.padEnd(10)} ${rate.toFixed(4)}`);
+  }
 
-// 3. Feed observations
-console.log("\n── Training with real observations ──");
-cal.observe("Hello world", 3);
-cal.observe("你好世界", 6);
+  // Estimate a few samples.
+  console.log('\nEstimates after calibration:');
+  for (const text of ['Hello world', '你好', 'Mixed 你好 123 😊']) {
+    console.log(`  ${JSON.stringify(text).padEnd(30)} → ${cal.estimate(text)} tokens`);
+  }
 
-const moreData: [string, number][] = [
-  ["short", 2],
-  ["a bit longer english text here", 8],
-  ["more english words for the model to learn from", 12],
-  ["中文中文中文中文", 12],
-  ["1234567890", 4],
-];
-for (const [text, tokens] of moreData) {
-  cal.observe(text, tokens);
+  // Export accumulator to file.
+  const matrix = cal.toMatrix();
+  const snapshot: Record<string, TokenAccumulator> = { 'demo-model': matrix };
+  writeFileSync('calibrated-snapshot.json', JSON.stringify({ models: snapshot }, null, 2));
+  console.log('\nExported accumulator to calibrated-snapshot.json\n');
 }
-console.log(`After ${2 + moreData.length} observations:`);
-console.log(`English estimate: ${cal.estimate(english)} tokens`);
-console.log(`Chinese estimate: ${cal.estimate(chinese)} tokens`);
-console.log(`Coefficients    :`, cal.coefficients());
 
-// 4. Snapshot round-trip — load fresh from model and replay training
-console.log("\n── Restored from fresh model + same training ──");
-const restored = TokenCalibrator.fromModel('gpt-4o', modelsJson)
-  ?? TokenCalibrator.fromModel('default', modelsJson)!;
-restored.observe("Hello world", 3);
-restored.observe("你好世界", 6);
-for (const [text, tokens] of moreData) {
-  restored.observe(text, tokens);
+// ───────────────────── Estimate mode ─────────────────────
+
+function cmdEstimate(snapshotPath?: string): void {
+  console.log('=== Estimate mode ===\n');
+
+  let matrices: Record<string, TokenAccumulator> = {};
+
+  if (snapshotPath && existsSync(snapshotPath)) {
+    // Load custom snapshot.
+    const raw = JSON.parse(readFileSync(snapshotPath, 'utf-8'));
+    matrices = raw.models ?? raw;
+    console.log(`Loaded ${Object.keys(matrices).length} model(s) from ${snapshotPath}\n`);
+  } else {
+    console.log('Using built-in default models (no snapshot file provided)\n');
+  }
+
+  const est = new TokenEstimator(matrices);
+
+  // Test texts covering different scripts.
+  const testTexts = [
+    'Hello world',
+    'The quick brown fox jumps over the lazy dog',
+    '你好，世界',
+    '안녕하세요',
+    'Привет мир',
+    '123 456 7890',
+    '🚀 Token estimation is amazing! 🎉',
+  ];
+
+  // A few model names to test.
+  const modelNames = Object.keys(BUILTIN_TOKEN_RATES).slice(0, 5);
+  modelNames.push('demo-model'); // may or may not be present
+
+  for (const model of modelNames) {
+    console.log(`── ${model} ──`);
+    if (est.has(model)) {
+      console.log('  (user-calibrated data loaded)');
+    }
+    for (const text of testTexts) {
+      const t = est.estimate(model, text);
+      console.log(`  ${JSON.stringify(text).padEnd(50)} → ${t} tokens`);
+    }
+    console.log();
+  }
+
+  // Also show what falls back to bare priors.
+  console.log('── unknown-model (falls back to prior) ──');
+  for (const text of ['Hello', '你好']) {
+    const t = est.estimate('unknown-model', text);
+    console.log(`  ${JSON.stringify(text).padEnd(50)} → ${t} tokens`);
+  }
 }
-console.log(`English estimate: ${restored.estimate(english)} (match = ${restored.estimate(english) === cal.estimate(english)})`);
 
-// 5. Export your trained snapshot (to contribute back!)
-console.log("\n── Your trained snapshot (ready to contribute!) ──");
-const trained = cal.snapshot();
-console.log("a:", JSON.stringify(trained.a));
-console.log("g:", JSON.stringify(trained.g));
-console.log("strength:", trained.strength);
+// ─────────────────────── Main ───────────────────────
 
-console.log("\n=== Demo complete ===");
+const mode = process.argv[2] ?? 'estimate';
+const arg = process.argv[3];
+
+console.log(`token-calibrator demo (mode: ${mode})\n`);
+
+if (mode === 'calibrate') {
+  cmdCalibrate();
+} else {
+  cmdEstimate(arg);
+}

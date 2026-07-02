@@ -1,83 +1,131 @@
 """
-Demo: token-calibrator in action — loading from models.json.
+token-calibrator demo
 
-Shows how to initialise from a model snapshot file, then learn and
-export your own snapshot.
+Demonstrates two usage modes:
+  1. Calibrate mode  — feed sample observations and export the accumulator
+  2. Estimate mode — load calibrated data (or use built-in models) and estimate
 
-Run: python examples/demo.py (from the python/ directory)
+Usage:
+    python examples/demo.py calibrate               # calibrate & export to calibrated-snapshot.json
+    python examples/demo.py estimate                # estimate using built-in models
+    python examples/demo.py estimate calibrated-snapshot.json  # use custom snapshot
 """
 
 import json
+import sys
 import os
-from src.calibrator import TokenCalibrator, estimate_tokens_from_priors
+
+from token_calibrator import (
+    TokenCalibrator,
+    TokenEstimator,
+    TOKEN_BUCKET_PRIORS,
+    BUILTIN_TOKEN_RATES,
+    classify_token_buckets,
+    estimate_tokens,
+)
 
 
-def main():
-    print("=== token-calibrator demo (Python) ===\n")
+# ────────────────────── Calibrate mode ──────────────────────
 
-    # Resolve path to models/models.json relative to this file
-    demo_dir = os.path.dirname(__file__)
-    models_path = os.path.join(demo_dir, "..", "..", "models", "models.json")
-    with open(models_path) as f:
-        models_json = f.read()
+def cmd_calibrate() -> None:
+    print("=== Calibrate mode ===\n")
 
-    english = "Hello, world! This is a test of the token calibrator."
-    chinese = "你好世界，这是一个测试。"
-    mixed = "Hello 你好 123 🎉"
+    # Create a calibrator with a small prior strength so data dominates quickly.
+    cal = TokenCalibrator({"priorStrength": 1_000})
 
-    # 1. Load from models.json
-    print("── Load from models.json ──")
-    cal = TokenCalibrator.from_model("gpt-4o", models_json)
-    # from_model returns a fresh prior-seeded calibrator if model not found
-    print("Loaded model: gpt-4o")
-    print(f"English estimate: {cal.estimate(english)} tokens")
-    print(f"Coefficients    : {cal.coefficients()}")
-
-    # 2. Compare with stateless priors
-    print("\n── Stateless priors (no calibration) ──")
-    print(f"English  : {len(english):>4} chars → ~{estimate_tokens_from_priors(english):>3} tokens")
-    print(f"Chinese  : {len(chinese):>4} chars → ~{estimate_tokens_from_priors(chinese):>3} tokens")
-    print(f"Mixed    : {len(mixed):>4} chars → ~{estimate_tokens_from_priors(mixed):>3} tokens")
-
-    # 3. Feed observations
-    print("\n── Training with real observations ──")
-    cal.observe("Hello world", 3)
-    cal.observe("你好世界", 6)
-
-    more_data = [
-        ("short", 2),
-        ("a bit longer english text here", 8),
-        ("more english words for the model to learn from", 12),
-        ("中文中文中文中文", 12),
-        ("1234567890", 4),
+    # Simulated real usage observations (prompt text, actual token count from API).
+    observations: list[tuple[str, int]] = [
+        ("Hello world", 3),
+        ("The quick brown fox jumps over the lazy dog", 10),
+        ("你好，世界", 6),
+        ("안녕하세요", 8),
+        ("Привет мир", 5),
+        ("123 456 7890", 6),
+        ("🚀 Token estimation is amazing! 🎉", 12),
+        ("Mixed 你好 Hello 123 😊", 9),
     ]
-    for text, tokens in more_data:
+
+    for text, tokens in observations:
+        counts = classify_token_buckets(text)
+        print(f"  observe: {counts}  →  {tokens} tokens  ({json.dumps(text)})")
         cal.observe(text, tokens)
 
-    print(f"After {2 + len(more_data)} observations:")
-    print(f"English estimate: {cal.estimate(english)} tokens")
-    print(f"Chinese estimate: {cal.estimate(chinese)} tokens")
-    print(f"Coefficients    : {cal.coefficients()}")
+    # Show learned rates.
+    rates = cal.rates()
+    print("\nLearned per-bucket rates:")
+    for bucket, rate in sorted(rates.items()):
+        print(f"  {bucket:<10} {rate:.4f}")
 
-    # 4. Snapshot round-trip — load fresh from model and replay training
-    print("\n── Restored from fresh model + same training ──")
-    restored = TokenCalibrator.from_model("gpt-4o", models_json)
-    restored.observe("Hello world", 3)
-    restored.observe("你好世界", 6)
-    for text, tokens in more_data:
-        restored.observe(text, tokens)
+    # Estimate a few samples.
+    print("\nEstimates after calibration:")
+    for text in ["Hello world", "你好", "Mixed 你好 123 😊"]:
+        print(f"  {json.dumps(text):<30} → {cal.estimate(text)} tokens")
 
-    print(f"English estimate: {restored.estimate(english)} (match = {restored.estimate(english) == cal.estimate(english)})")
+    # Export accumulator to file.
+    matrix = cal.to_matrix()
+    snapshot = {"models": {"demo-model": matrix}}
+    with open("calibrated-snapshot.json", "w") as f:
+        json.dump(snapshot, f, indent=2)
+    print("\nExported accumulator to calibrated-snapshot.json\n")
 
-    # 5. Export your trained snapshot (to contribute back!)
-    print("\n── Your trained snapshot (ready to contribute!) ──")
-    trained = cal.snapshot()
-    print(f"a: {trained['a']}")
-    print(f"g: {trained['g']}")
-    print(f"strength: {trained['strength']}")
 
-    print("\n=== Demo complete ===")
+# ───────────────────── Estimate mode ─────────────────────
 
+def cmd_estimate(snapshot_path: str | None = None) -> None:
+    print("=== Estimate mode ===\n")
+
+    matrices: dict[str, dict] = {}
+
+    if snapshot_path and os.path.exists(snapshot_path):
+        with open(snapshot_path) as f:
+            raw = json.load(f)
+        matrices = raw.get("models", raw)
+        print(f"Loaded {len(matrices)} model(s) from {snapshot_path}\n")
+    else:
+        print("Using built-in default models (no snapshot file provided)\n")
+
+    est = TokenEstimator(matrices)
+
+    # Test texts covering different scripts.
+    test_texts = [
+        "Hello world",
+        "The quick brown fox jumps over the lazy dog",
+        "你好，世界",
+        "안녕하세요",
+        "Привет мир",
+        "123 456 7890",
+        "🚀 Token estimation is amazing! 🎉",
+    ]
+
+    # A few model names to test.
+    model_names = list(BUILTIN_TOKEN_RATES.keys())[:5]
+    model_names.append("demo-model")  # may or may not be present
+
+    for model in model_names:
+        print(f"── {model} ──")
+        if est.has(model):
+            print("  (user-calibrated data loaded)")
+        for text in test_texts:
+            t = est.estimate(model, text)
+            print(f"  {json.dumps(text):<50} → {t} tokens")
+        print()
+
+    # Also show what falls back to bare priors.
+    print("── unknown-model (falls back to prior) ──")
+    for text in ["Hello", "你好"]:
+        t = est.estimate("unknown-model", text)
+        print(f"  {json.dumps(text):<50} → {t} tokens")
+
+
+# ─────────────────────── Main ───────────────────────
 
 if __name__ == "__main__":
-    main()
+    mode = sys.argv[1] if len(sys.argv) > 1 else "estimate"
+    arg = sys.argv[2] if len(sys.argv) > 2 else None
+
+    print(f"token-calibrator demo (mode: {mode})\n")
+
+    if mode == "calibrate":
+        cmd_calibrate()
+    else:
+        cmd_estimate(arg)

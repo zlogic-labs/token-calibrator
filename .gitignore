@@ -11,8 +11,9 @@ ts/yarn.lock
 ts/pnpm-lock.yaml
 
 # --- Python ---
-python/__pycache__/
+**/__pycache__/
 python/*.egg-info/
+python/src/*.egg-info/
 python/dist/
 python/build/
 python/.venv/
@@ -24,6 +25,7 @@ python/.eggs/
 # --- Go ---
 go/bin/
 go/vendor/
+*.exe
 
 # --- IDE / Editor ---
 .idea/

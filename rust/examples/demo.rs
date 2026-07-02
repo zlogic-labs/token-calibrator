@@ -1,76 +1,150 @@
-//! Demo: token-calibrator in action — loading from bundled model snapshots.
+//! token-calibrator demo
 //!
-//! Shows how to initialise from a model in models.json, then learn and
-//! snapshot.
+//! Demonstrates two usage modes:
+//!   1. Calibrate mode  — feed sample observations and export the accumulator
+//!   2. Estimate mode — load calibrated data (or use built-in models) and estimate
 //!
-//! Run: `cargo run --example demo`
+//! Usage:
+//!   cargo run --example demo calibrate              # calibrate & export
+//!   cargo run --example demo estimate               # estimate using built-in models
+//!   cargo run --example demo estimate calibrated-snapshot.json  # use custom snapshot
 
-use token_calibrator::{TokenCalibrator, estimate_tokens_from_priors};
+use std::collections::HashMap;
+use std::env;
+use std::fs;
+use std::path::Path;
 
-fn main() {
-    println!("=== token-calibrator demo (Rust) ===\n");
+use token_calibrator::{
+    classify_token_buckets,
+    TokenCalibrator, TokenCalibratorOptions, TokenEstimator, TokenEstimatorOptions,
+    TokenAccumulator, BUILTIN_TOKEN_RATES,
+};
 
-    let english = "Hello, world! This is a test of the token calibrator.";
-    let chinese = "你好世界，这是一个测试。";
-    let mixed   = "Hello 你好 123 🎉";
+// ────────────────────── Calibrate mode ──────────────────────
 
-    // 1. Load from bundled model file
-    println!("── Load from bundled models.json ──");
-    let mut cal = TokenCalibrator::from_bundled_model("gpt-4o")
-        .unwrap_or_else(|| TokenCalibrator::from_bundled_model("default").unwrap());
-    println!("Loaded model: gpt-4o");
-    println!("English estimate: {} tokens", cal.estimate(english));
-    println!("Coefficients    : {:.4?}", cal.coefficients());
+fn cmd_calibrate() {
+    println!("=== Calibrate mode ===\n");
 
-    // 2. Compare with stateless priors
-    println!("\n── Stateless priors (no calibration) ──");
-    println!("English  : {:>4} chars → ~{:>3} tokens",
-        english.len(), estimate_tokens_from_priors(english));
-    println!("Chinese  : {:>4} chars → ~{:>3} tokens",
-        chinese.chars().count(), estimate_tokens_from_priors(chinese));
-    println!("Mixed    : {:>4} chars → ~{:>3} tokens",
-        mixed.chars().count(), estimate_tokens_from_priors(mixed));
+    let mut cal = TokenCalibrator::new(TokenCalibratorOptions {
+        prior_strength: Some(1_000.0),
+        ..Default::default()
+    });
 
-    // 3. Feed observations to adapt the model
-    println!("\n── Training with real observations ──");
-    cal.observe("Hello world", 3);
-    cal.observe("你好世界", 6);
-
-    let more_data = [
-        ("short", 2),
-        ("a bit longer english text here", 8),
-        ("more english words for the model to learn from", 12),
-        ("中文中文中文中文", 12),
-        ("1234567890", 4),
+    let observations: Vec<(&str, f64)> = vec![
+        ("Hello world", 3.0),
+        ("The quick brown fox jumps over the lazy dog", 10.0),
+        ("你好，世界", 6.0),
+        ("안녕하세요", 8.0),
+        ("Привет мир", 5.0),
+        ("123 456 7890", 6.0),
+        ("🚀 Token estimation is amazing! 🎉", 12.0),
+        ("Mixed 你好 Hello 123 😊", 9.0),
     ];
-    for (text, tokens) in &more_data {
+
+    for (text, tokens) in &observations {
+        let counts = classify_token_buckets(text);
+        println!("  observe: {:?}  →  {} tokens  ({:?})", counts, tokens, text);
         cal.observe(text, *tokens);
     }
-    println!("After {} observations:", 2 + more_data.len());
-    println!("English estimate: {} tokens", cal.estimate(english));
-    println!("Chinese estimate: {} tokens", cal.estimate(chinese));
-    println!("Coefficients    : {:.4?}", cal.coefficients());
 
-    // 4. Snapshot round-trip — load fresh from model and replay training
-    let mut restored = TokenCalibrator::from_bundled_model("gpt-4o")
-        .unwrap_or_else(|| TokenCalibrator::from_bundled_model("default").unwrap());
-    // Feed the same data to the restored calibrator
-    restored.observe("Hello world", 3);
-    restored.observe("你好世界", 6);
-    for (text, tokens) in &more_data {
-        restored.observe(text, *tokens);
+    let rates = cal.rates();
+    println!("\nLearned per-bucket rates:");
+    let mut keys: Vec<&String> = rates.keys().collect();
+    keys.sort();
+    for k in keys {
+        println!("  {:<10} {:.4}", k, rates[k]);
     }
-    println!("\n── Restored from fresh model + same training ──");
-    println!("English estimate: {} (match = {})",
-        restored.estimate(english),
-        restored.estimate(english) == cal.estimate(english));
 
-    // 5. Save your own snapshot (to contribute back!)
-    println!("\n── Your trained snapshot (ready to contribute!) ──");
-    let trained = cal.snapshot();
-    println!("a: {:?}", trained.a);
-    println!("g: {:?}", trained.g);
-    println!("strength: {}", trained.strength);
+    println!("\nEstimates after calibration:");
+    let test_texts = ["Hello world", "你好", "Mixed 你好 123 😊"];
+    for text in &test_texts {
+        println!("  {:?}  →  {} tokens", text, cal.estimate(text));
+    }
 
-    println!("\n=== Demo complete ===");
+    let matrix = cal.to_matrix();
+    let snapshot = serde_json::json!({
+        "models": { "demo-model": matrix }
+    });
+    fs::write("calibrated-snapshot.json", serde_json::to_string_pretty(&snapshot).unwrap())
+        .expect("failed to write snapshot");
+    println!("\nExported accumulator to calibrated-snapshot.json\n");
+}
+
+// ───────────────────── Estimate mode ─────────────────────
+
+fn cmd_estimate(snapshot_path: Option<&str>) {
+    println!("=== Estimate mode ===\n");
+
+    let matrices: HashMap<String, TokenAccumulator> = if let Some(path) = snapshot_path {
+        if Path::new(path).exists() {
+            let raw = fs::read_to_string(path).expect("failed to read snapshot");
+            let parsed: serde_json::Value = serde_json::from_str(&raw).unwrap();
+            let models = parsed.get("models").unwrap_or(&parsed);
+            let mut m = HashMap::new();
+            if let Some(obj) = models.as_object() {
+                for (name, val) in obj {
+                    let acc: TokenAccumulator = serde_json::from_value(val.clone()).unwrap();
+                    m.insert(name.clone(), acc);
+                }
+            }
+            println!("Loaded {} model(s) from {}\n", m.len(), path);
+            m
+        } else {
+            println!("File not found: {}, using built-in models\n", path);
+            HashMap::new()
+        }
+    } else {
+        println!("Using built-in default models (no snapshot file provided)\n");
+        HashMap::new()
+    };
+
+    let est = TokenEstimator::new(Some(matrices), TokenEstimatorOptions::default());
+
+    let test_texts = [
+        "Hello world",
+        "The quick brown fox jumps over the lazy dog",
+        "你好，世界",
+        "안녕하세요",
+        "Привет мир",
+        "123 456 7890",
+        "🚀 Token estimation is amazing! 🎉",
+    ];
+
+    let mut model_names: Vec<&String> = BUILTIN_TOKEN_RATES.keys().collect();
+    model_names.truncate(5);
+    let demo_model = "demo-model".to_string();
+    model_names.push(&demo_model);
+
+    for model in &model_names {
+        println!("── {} ──", model);
+        if est.has(model) {
+            println!("  (user-calibrated data loaded)");
+        }
+        for text in &test_texts {
+            let t = est.estimate(model, text);
+            println!("  {:?}  →  {} tokens", text, t);
+        }
+        println!();
+    }
+
+    println!("── unknown-model (falls back to prior) ──");
+    for text in &["Hello", "你好"] {
+        let t = est.estimate("unknown-model", text);
+        println!("  {:?}  →  {} tokens", text, t);
+    }
+}
+
+// ─────────────────────── Main ───────────────────────
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    let mode = args.get(1).map(|s| s.as_str()).unwrap_or("estimate");
+    let arg = args.get(2).map(|s| s.as_str());
+
+    println!("token-calibrator demo (mode: {})\n", mode);
+
+    match mode {
+        "calibrate" => cmd_calibrate(),
+        _ => cmd_estimate(arg),
+    }
 }

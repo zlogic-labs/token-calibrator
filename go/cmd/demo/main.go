@@ -1,102 +1,168 @@
-// Demo: token-calibrator in action — loading from models.json.
-//
-// Shows how to initialise from a model snapshot file, then learn and
-// export your own snapshot.
-//
-// Run: go run ./cmd/demo
-
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"runtime"
+	"sort"
 
-	calibrator "github.com/zlogic/token-calibrator/go"
+	"github.com/zlogic/token-calibrator/go"
 )
 
 func main() {
-	fmt.Println("=== token-calibrator demo (Go) ===")
+	args := os.Args[1:]
+	mode := "estimate"
+	if len(args) > 0 {
+		mode = args[0]
+	}
 
-	// Resolve path to models/models.json relative to this source file
-	_, srcFile, _, _ := runtime.Caller(0)
-	modelsPath := filepath.Join(filepath.Dir(srcFile), "..", "..", "..", "models", "models.json")
-	jsonData, err := os.ReadFile(modelsPath)
-	if err != nil {
-		// Fallback: try relative from cwd
-		jsonData, err = os.ReadFile("models/models.json")
-		if err != nil {
-			panic("cannot find models/models.json: " + err.Error())
+	fmt.Printf("token-calibrator demo (mode: %s)\n\n", mode)
+
+	switch mode {
+	case "calibrate":
+		cmdCalibrate()
+	default:
+		snapshotPath := ""
+		if len(args) > 1 {
+			snapshotPath = args[1]
+		}
+		cmdEstimate(snapshotPath)
+	}
+}
+
+// ────────────────────── Calibrate mode ──────────────────────
+
+func cmdCalibrate() {
+	fmt.Println("=== Calibrate mode ===")
+	fmt.Println()
+
+	strength := 1000.0
+	cal := calibrator.NewTokenCalibrator(calibrator.TokenCalibratorOptions{
+		PriorStrength: &strength,
+	})
+
+	type observation struct {
+		text   string
+		tokens float64
+	}
+
+	observations := []observation{
+		{"Hello world", 3},
+		{"The quick brown fox jumps over the lazy dog", 10},
+		{"你好，世界", 6},
+		{"안녕하세요", 8},
+		{"Привет мир", 5},
+		{"123 456 7890", 6},
+		{"🚀 Token estimation is amazing! 🎉", 12},
+		{"Mixed 你好 Hello 123 😊", 9},
+	}
+
+	for _, obs := range observations {
+		counts := calibrator.ClassifyTokenBuckets(obs.text)
+		fmt.Printf("  observe: %v  →  %.0f tokens  (%q)\n", counts, obs.tokens, obs.text)
+		cal.Observe(obs.text, obs.tokens)
+	}
+
+	rates := cal.Rates()
+	fmt.Println()
+	fmt.Println("Learned per-bucket rates:")
+	keys := make([]string, 0, len(rates))
+	for k := range rates {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		fmt.Printf("  %-10s %.4f\n", k, rates[k])
+	}
+
+	fmt.Println()
+	fmt.Println("Estimates after calibration:")
+	for _, text := range []string{"Hello world", "你好", "Mixed 你好 123 😊"} {
+		fmt.Printf("  %-30q → %d tokens\n", text, cal.Estimate(text))
+	}
+
+	matrix := cal.ToMatrix()
+	snapshot := map[string]any{
+		"models": map[string]calibrator.TokenAccumulator{
+			"demo-model": matrix,
+		},
+	}
+	data, _ := json.MarshalIndent(snapshot, "", "  ")
+	os.WriteFile("calibrated-snapshot.json", data, 0644)
+	fmt.Println()
+	fmt.Println("Exported accumulator to calibrated-snapshot.json")
+	fmt.Println()
+}
+
+// ───────────────────── Estimate mode ─────────────────────
+
+func cmdEstimate(snapshotPath string) {
+	fmt.Println("=== Estimate mode ===")
+	fmt.Println()
+
+	matrices := make(map[string]calibrator.TokenAccumulator)
+
+	if snapshotPath != "" {
+		if _, err := os.Stat(snapshotPath); err == nil {
+			data, _ := os.ReadFile(snapshotPath)
+			var raw map[string]any
+			json.Unmarshal(data, &raw)
+			if models, ok := raw["models"].(map[string]any); ok {
+				for name, val := range models {
+					bytes, _ := json.Marshal(val)
+					var acc calibrator.TokenAccumulator
+					json.Unmarshal(bytes, &acc)
+					matrices[name] = acc
+				}
+			}
+			fmt.Printf("Loaded %d model(s) from %s\n", len(matrices), snapshotPath)
+			fmt.Println()
+		} else {
+			fmt.Printf("File not found: %s, using built-in models\n", snapshotPath)
+			fmt.Println()
+		}
+	} else {
+		fmt.Println("Using built-in default models (no snapshot file provided)")
+		fmt.Println()
+	}
+
+	est := calibrator.NewTokenEstimator(matrices, calibrator.TokenEstimatorOptions{})
+
+	testTexts := []string{
+		"Hello world",
+		"The quick brown fox jumps over the lazy dog",
+		"你好，世界",
+		"안녕하세요",
+		"Привет мир",
+		"123 456 7890",
+		"🚀 Token estimation is amazing! 🎉",
+	}
+
+	// A few model names
+	modelNames := make([]string, 0, 6)
+	for name := range calibrator.BUILTIN_TOKEN_RATES {
+		modelNames = append(modelNames, name)
+		if len(modelNames) >= 5 {
+			break
 		}
 	}
+	modelNames = append(modelNames, "demo-model")
 
-	english := "Hello, world! This is a test of the token calibrator."
-	chinese := "你好世界，这是一个测试。"
-	mixed := "Hello 你好 123 🎉"
-
-	// 1. Load from models.json
-	fmt.Println("── Load from models.json ──")
-	cal := calibrator.NewTokenCalibratorFromModel("gpt-4o", jsonData)
-	if cal == nil {
-		cal = calibrator.NewTokenCalibratorFromModel("default", jsonData)
+	for _, model := range modelNames {
+		fmt.Printf("── %s ──\n", model)
+		if est.Has(model) {
+			fmt.Println("  (user-calibrated data loaded)")
+		}
+		for _, text := range testTexts {
+			t := est.Estimate(model, text)
+			fmt.Printf("  %-50q → %d tokens\n", text, t)
+		}
+		fmt.Println()
 	}
-	fmt.Println("Loaded model: gpt-4o")
-	fmt.Printf("English estimate: %d tokens\n", cal.Estimate(english))
-	fmt.Printf("Coefficients    : %v\n", cal.Coefficients())
 
-	// 2. Compare with stateless priors
-	fmt.Println("\n── Stateless priors (no calibration) ──")
-	fmt.Printf("English  : %4d chars → ~%3d tokens\n",
-		len(english), calibrator.EstimateTokensFromPriors(english))
-	fmt.Printf("Chinese  : %4d chars → ~%3d tokens\n",
-		len([]rune(chinese)), calibrator.EstimateTokensFromPriors(chinese))
-	fmt.Printf("Mixed    : %4d chars → ~%3d tokens\n",
-		len([]rune(mixed)), calibrator.EstimateTokensFromPriors(mixed))
-
-	// 3. Feed observations
-	fmt.Println("\n── Training with real observations ──")
-	cal.Observe("Hello world", 3)
-	cal.Observe("你好世界", 6)
-
-	moreData := []struct {
-		text   string
-		tokens int
-	}{
-		{"short", 2},
-		{"a bit longer english text here", 8},
-		{"more english words for the model to learn from", 12},
-		{"中文中文中文中文", 12},
-		{"1234567890", 4},
+	fmt.Println("── unknown-model (falls back to prior) ──")
+	for _, text := range []string{"Hello", "你好"} {
+		t := est.Estimate("unknown-model", text)
+		fmt.Printf("  %-50q → %d tokens\n", text, t)
 	}
-	for _, d := range moreData {
-		cal.Observe(d.text, d.tokens)
-	}
-	fmt.Printf("After %d observations:\n", 2+len(moreData))
-	fmt.Printf("English estimate: %d tokens\n", cal.Estimate(english))
-	fmt.Printf("Chinese estimate: %d tokens\n", cal.Estimate(chinese))
-	fmt.Printf("Coefficients    : %v\n", cal.Coefficients())
-
-	// 4. Snapshot round-trip — load fresh from model and replay training
-	fmt.Println("\n── Restored from fresh model + same training ──")
-	restored := calibrator.NewTokenCalibratorFromModel("gpt-4o", jsonData)
-	if restored == nil {
-		restored = calibrator.NewTokenCalibratorFromModel("default", jsonData)
-	}
-	restored.Observe("Hello world", 3)
-	restored.Observe("你好世界", 6)
-	for _, d := range moreData {
-		restored.Observe(d.text, d.tokens)
-	}
-	fmt.Printf("English estimate: %d (match = %v)\n",
-		restored.Estimate(english), restored.Estimate(english) == cal.Estimate(english))
-
-	// 5. Export your trained snapshot (to contribute back!)
-	fmt.Println("\n── Your trained snapshot (ready to contribute!) ──")
-	trained := cal.Snapshot()
-	fmt.Printf("a: %v\n", trained.A)
-	fmt.Printf("g: %v\n", trained.G)
-	fmt.Printf("strength: %v\n", trained.Strength)
-
-	fmt.Println("\n=== Demo complete ===")
 }
