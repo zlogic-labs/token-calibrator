@@ -15,6 +15,7 @@ repository = "https://github.com/zlogic/token-calibrator"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["token_calibrator*"]
 
 [project.optional-dependencies]
 dev = ["pytest"]

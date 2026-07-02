@@ -98,16 +98,22 @@ npm install @zlogic/token-calibrator
 ```
 
 ```ts
-import { TokenCalibrator } from "@zlogic/token-calibrator";
+import { TokenTrainer, TokenEstimator, DEFAULT_MODELS_JSON } from "@zlogic/token-calibrator";
 
-const cal = new TokenCalibrator();
+// ── Train from real usage ──
+const trainer = new TokenTrainer();
+trainer.observe(prompt, actualTokens);
 
-const estimate = cal.estimate(prompt);
+// Export as complete models.json (merged with bundled defaults)
+const json = trainer.toJsonMerged("my-model", DEFAULT_MODELS_JSON);
 
-// Feed the actual token count returned by your LLM provider.
-cal.observe(prompt, actualTokens);
+// ── Estimate tokens by model name ──
+// Uses bundled default models (includes gpt-4o, claude-3.5-sonnet, ...)
+const estimator = new TokenEstimator();
+const estimate = estimator.estimate("gpt-4o", prompt);
 
-// Future estimates become more accurate.
+// Or load your own:
+const estimator2 = new TokenEstimator(jsonString);
 ```
 
 ### Python
@@ -117,12 +123,21 @@ pip install token-calibrator
 ```
 
 ```python
-from token_calibrator import TokenCalibrator
+from token_calibrator import TokenTrainer, TokenEstimator, DEFAULT_MODELS_JSON
 
-cal = TokenCalibrator()
-estimate = cal.estimate(prompt)
+# Train
+trainer = TokenTrainer()
+trainer.observe(prompt, actual_tokens)
 
-cal.observe(prompt, actual_tokens)
+# Export as complete models.json (merged with bundled defaults)
+json_str = trainer.to_json_merged("my-model", DEFAULT_MODELS_JSON)
+
+# Estimate by model name — uses bundled default models
+estimator = TokenEstimator()
+estimate = estimator.estimate("gpt-4o", prompt)
+
+# Or load custom JSON:
+estimator2 = TokenEstimator(json_data)
 ```
 
 ### Rust
@@ -132,13 +147,18 @@ cargo add token-calibrator
 ```
 
 ```rust
-use token_calibrator::TokenCalibrator;
+use token_calibrator::{TokenTrainer, TokenEstimator, DEFAULT_MODELS_JSON};
 
-let mut cal = TokenCalibrator::new(Default::default(), None);
+// Train
+let mut trainer = TokenTrainer::new(Default::default(), None);
+trainer.observe(prompt, actual_tokens);
 
-let estimate = cal.estimate(prompt);
+// Export as complete models.json (merged with bundled defaults)
+let json = trainer.to_json_merged("my-model", DEFAULT_MODELS_JSON);
 
-cal.observe(prompt, actual_tokens);
+// Estimate by model name — uses bundled default models
+let estimator = TokenEstimator::new(DEFAULT_MODELS_JSON).unwrap();
+let estimate = estimator.estimate("gpt-4o", prompt);
 ```
 
 ### Go
@@ -150,9 +170,16 @@ go get github.com/zlogic/token-calibrator/go
 ```go
 import "github.com/zlogic/token-calibrator/go/calibrator"
 
-cal := calibrator.NewTokenCalibrator(calibrator.TokenCalibratorOptions{}, nil)
-estimate := cal.Estimate(prompt)
-cal.Observe(prompt, actualTokens)
+// Train
+trainer := calibrator.NewTokenTrainer(calibrator.TokenTrainerOptions{}, nil)
+trainer.Observe(prompt, actualTokens)
+
+// Export as complete models.json (merged with bundled defaults)
+jsonStr := trainer.ToJSONMerged("my-model", calibrator.DefaultModelsJSON)
+
+// Estimate by model name — uses bundled default models
+estimator := calibrator.NewTokenEstimatorFromJSON([]byte(calibrator.DefaultModelsJSON))
+estimate, ok := estimator.Estimate("gpt-4o", prompt)
 ```
 
 ---
@@ -161,20 +188,20 @@ cal.Observe(prompt, actualTokens)
 
 Run a complete walkthrough in your language of choice.
 
-| Language       | Command                    |
-| -------------- | -------------------------- |
-| **Rust**       | `cargo run --example demo` |
-| **TypeScript** | `npx tsx examples/demo.ts` |
-| **Python**     | `python examples/demo.py`  |
-| **Go**         | `go run ./cmd/demo`        |
+| Language       | Command (train)                     | Command (estimate)                      |
+| -------------- | ----------------------------------- | --------------------------------------- |
+| **Rust**       | `cargo run --example train`         | `cargo run --example estimate [file]`   |
+| **TypeScript** | `npx tsx examples/train.ts`         | `npx tsx examples/estimate.ts [file]`   |
+| **Python**     | `python examples/train.py`          | `python examples/estimate.py [file]`    |
+| **Go**         | `go run ./cmd/train`                | `go run ./cmd/estimate [file]`          |
 
-Each demo:
+The **train** example:
+1. Creates a `TokenTrainer` and feeds hardcoded sample observations
+2. Exports the learned coefficients as a JSON snapshot file (`trained-snapshot.json`)
 
-1. Loads a model snapshot from `models.json` and estimates English, Chinese, and mixed-language text
-2. Feeds real token counts back into the calibrator
-3. Shows estimates improving over time
-4. Prints the learned coefficients
-5. Saves and restores a snapshot
+The **estimate** example:
+1. If a file argument is given, loads that JSON snapshot; otherwise uses the built-in default
+2. Estimates token counts for English, Chinese, and mixed-language text
 
 ---
 
@@ -223,21 +250,24 @@ time.
 
 ## Pre-trained model snapshots
 
-Instead of starting from generic priors, you can initialize a calibrator with a
-community-contributed snapshot trained for a specific model.
+The library bundles community-contributed snapshots for various models
+(`gpt-4o`, `claude-3.5-sonnet`, `gemini-2.0-flash`, etc.) via the
+`DEFAULT_MODELS_JSON` constant. Just create an `TokenEstimator` with no arguments:
 
 ```python
-import json
+from token_calibrator import TokenEstimator
 
-with open("models/models.json") as f:
-    cal = TokenCalibrator.from_model("gpt-4o", f.read())
+# Bundled default models — no extra download needed
+estimator = TokenEstimator()
+estimator.estimate("gpt-4o", "Hello, world!")   # → ~3 tokens
+estimator.estimate("claude-3.5-sonnet", text)    # → different model's estimate
 ```
 
-Snapshots provide a better starting point while still allowing the estimator to
-continue learning from future observations.
+The file `models/models.json` in the repo root is the source of truth.
+Contributors update this file and the hardcoded `DEFAULT_MODELS_JSON` constants
+in each language's code are updated accordingly.
 
-Contributions of additional trained snapshots are welcome. See
-[`CONTRIBUTING.md`](./CONTRIBUTING.md).
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for how to contribute a snapshot.
 
 ---
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  TokenCalibrator,
+  TokenTrainer,
+  TokenEstimator,
   classifyTokenBuckets,
   estimateTokensFromPriors,
 } from './calibrator.js';
@@ -24,7 +25,6 @@ describe('classifyTokenBuckets', () => {
 
   it('classifies mixed text', () => {
     const c = classifyTokenBuckets('Hello 世界 123 😊');
-    // H e l l o + 3 spaces = 8 Latin; 世 界 = 2 Han; 1 2 3 = 3 Digit; 😊 = 4 bytes Other
     expect(c.han).toBe(2);
     expect(c.latin).toBe(8);
     expect(c.digit).toBe(3);
@@ -47,55 +47,128 @@ describe('estimateTokensFromPriors', () => {
   });
 });
 
-describe('TokenCalibrator', () => {
-  it('starts with prior estimates', () => {
-    const cal = new TokenCalibrator();
-    expect(cal.estimate('Hello world')).toBe(3);
+// ---- TokenTrainer tests ----
+
+describe('TokenTrainer', () => {
+  it('starts with prior coefficients', () => {
+    const trainer = new TokenTrainer({ priorStrength: 1 });
+    const c = trainer.coefficients();
+    expect(c.han).toBeCloseTo(1.0);
+    expect(c.latin).toBeCloseTo(0.25);
+    expect(c.digit).toBeCloseTo(0.4);
+    expect(c.other).toBeCloseTo(0.6);
   });
 
   it('adapts after observations (small prior strength)', () => {
-    const cal = new TokenCalibrator({ priorStrength: 1 });
-    expect(cal.estimate('Hello world')).toBe(3);
+    const trainer = new TokenTrainer({ priorStrength: 1 });
     for (let i = 0; i < 20; i++) {
-      cal.observe('Hello world', 4);
+      trainer.observe('Hello world', 4);
     }
-    expect(cal.estimate('Hello world')).toBe(4);
+    const c = trainer.coefficients();
+    expect(c.latin).toBeCloseTo(4.0 / 11.0, 1);
   });
 
   it('round-trips via snapshot', () => {
-    const cal = new TokenCalibrator();
-    cal.observe('test', 2);
-    const snap = cal.snapshot();
-    const restored = new TokenCalibrator({}, snap);
-    expect(restored.estimate('test')).toBe(cal.estimate('test'));
+    const trainer = new TokenTrainer();
+    trainer.observe('test', 2);
+    const snap = trainer.snapshot();
+    const restored = new TokenTrainer({}, snap);
+    expect(restored.a).toEqual(trainer.a);
+    expect(restored.g).toEqual(trainer.g);
+    expect(restored.strength).toBe(trainer.strength);
+    expect(restored.coefficients()).toEqual(trainer.coefficients());
+  });
+});
+
+// ---- TokenEstimator tests ----
+
+describe('TokenEstimator', () => {
+  it('returns null for unknown model', () => {
+    const est = new TokenEstimator();
+    expect(est.estimate('any-model', 'hello')).toBeNull();
   });
 
-  it('returns coefficients as a record', () => {
-    const cal = new TokenCalibrator();
-    const coef = cal.coefficients();
-    expect(coef).toHaveProperty('han');
-    expect(coef).toHaveProperty('latin');
-    expect(coef).toHaveProperty('digit');
-    expect(coef).toHaveProperty('other');
+  it('estimates using a registered model', () => {
+    const est = new TokenEstimator();
+    est.addModel('test-model', {
+      a: [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],
+      g: [1.0, 0.5, 0.8, 1.2],
+      strength: 1.0,
+    });
+    expect(est.estimate('test-model', 'Hello world')).toBe(6);
+    expect(est.estimate('unknown', 'Hello world')).toBeNull();
   });
 
-  it('creates from model JSON', () => {
+  it('returns 0 for empty input', () => {
+    const est = new TokenEstimator();
+    est.addModel('m', {
+      a: [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],
+      g: [1.0, 0.5, 0.8, 1.2],
+      strength: 1.0,
+    });
+    expect(est.estimate('m', '')).toBe(0);
+  });
+
+  it('supports removeModel', () => {
+    const est = new TokenEstimator();
+    est.addModel('m', {
+      a: [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],
+      g: [1.0, 0.25, 0.4, 0.6],
+      strength: 1.0,
+    });
+    expect(est.size).toBe(1);
+    est.removeModel('m');
+    expect(est.size).toBe(0);
+    expect(est.estimate('m', 'hello')).toBeNull();
+  });
+
+  it('lists model names', () => {
+    const est = new TokenEstimator();
+    const snap = {
+      a: [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],
+      g: [1.0, 0.25, 0.4, 0.6],
+      strength: 1.0,
+    };
+    est.addModel('alpha', snap);
+    est.addModel('beta', { ...snap });
+    const names = [...est.modelNames()];
+    expect(names).toHaveLength(2);
+    expect(names).toContain('alpha');
+    expect(names).toContain('beta');
+  });
+
+  it('creates from JSON at construction time', () => {
     const json = JSON.stringify({
       models: {
         'test-model': {
-          a: [[1000,0,0,0],[0,1000,0,0],[0,0,1000,0],[0,0,0,1000]],
-          g: [1000,250,400,600],
-          strength: 1000,
+          a: [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],
+          g: [1,0.5,0.8,1.2],
+          strength: 1.0,
         },
       },
     });
-    const cal = TokenCalibrator.fromModel('test-model', json);
-    expect(cal).not.toBeNull();
-    expect(cal!.estimate('Hello world')).toBe(3);
+    // Pass JSON to constructor — no separate fromJson() call
+    const est = new TokenEstimator(json);
+    expect(est.size).toBe(1);
+    expect(est.estimate('test-model', 'Hello world')).toBe(6);
   });
 
-  it('returns null for missing model', () => {
+  it('returns empty for empty models JSON', () => {
     const json = JSON.stringify({ models: {} });
-    expect(TokenCalibrator.fromModel('nonexistent', json)).toBeNull();
+    const est = new TokenEstimator(json);
+    expect(est.size).toBe(0);
+  });
+
+  it('gracefully handles malformed JSON', () => {
+    const est = new TokenEstimator('not json');
+    expect(est.size).toBe(0);
+  });
+
+  it('uses built-in default when no JSON given', () => {
+    const est = new TokenEstimator();
+    expect(est.size).toBe(4);
+    expect([...est.modelNames()]).toContain('default');
+    expect([...est.modelNames()]).toContain('gpt-4o');
+    expect(est.estimate('default', 'Hello world')).toBe(3);
   });
 });
