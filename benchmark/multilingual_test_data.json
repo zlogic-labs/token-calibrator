@@ -1,0 +1,127 @@
+[
+  {
+    "id": "en-001",
+    "text": "Artificial intelligence is transforming the way we interact with technology. From virtual assistants to recommendation systems, machine learning algorithms are becoming increasingly integrated into our daily lives. The rapid advancement of deep learning has enabled breakthroughs in computer vision, natural language processing, and generative models.",
+    "desc": "en-ai-paragraph"
+  },
+  {
+    "id": "en-002",
+    "text": "The quick brown fox jumps over the lazy dog. This sentence contains every letter of the English alphabet at least once, making it a popular typing practice tool. Pack my box with five dozen liquor jugs is another well-known pangram.",
+    "desc": "en-pangram"
+  },
+  {
+    "id": "en-003",
+    "text": "To be, or not to be, that is the question: Whether it is nobler in the mind to suffer the slings and arrows of outrageous fortune, or to take arms against a sea of troubles and by opposing end them. To die: to sleep; no more; and by a sleep to say we end the heart-ache and the thousand natural shocks that flesh is heir to.",
+    "desc": "en-shakespeare"
+  },
+  {
+    "id": "en-004",
+    "text": "The global economy faces unprecedented challenges as central banks around the world grapple with inflationary pressures. Supply chain disruptions, labor shortages, and geopolitical tensions have created a complex economic landscape. Policymakers are carefully balancing interest rate adjustments to maintain stability while fostering sustainable growth.",
+    "desc": "en-economics"
+  },
+  {
+    "id": "en-005",
+    "text": "Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed. Supervised learning uses labeled training data, while unsupervised learning finds patterns in unlabeled data. Reinforcement learning trains agents through trial and error.",
+    "desc": "en-ml-def"
+  },
+  {
+    "id": "zh-001",
+    "text": "人工智能正在深刻改变我们的生活方式。从智能手机到智能家居，从自动驾驶到医疗诊断，AI技术已经渗透到各行各业。深度学习算法的不断进步使得计算机在图像识别、语音识别和自然语言处理等领域取得了超越人类水平的成就。",
+    "desc": "zh-ai"
+  },
+  {
+    "id": "zh-002",
+    "text": "春天来了，万物复苏。公园里的花儿竞相开放，鸟儿在枝头欢快地歌唱。人们脱去了厚重的冬衣，在温暖的阳光下散步、运动。这是一个充满希望和生机的季节，每个人都怀着美好的期待迎接新的开始。",
+    "desc": "zh-spring"
+  },
+  {
+    "id": "zh-003",
+    "text": "中国的经济发展取得了举世瞩目的成就。改革开放以来，GDP持续快速增长，人民生活水平显著提高。基础设施建设不断完善，高速铁路网络覆盖全国主要城市。科技创新能力持续增强，在5G通信、航天技术等领域达到世界领先水平。",
+    "desc": "zh-economy"
+  },
+  {
+    "id": "zh-004",
+    "text": "北京是中国的首都，拥有三千多年的建城史。这座城市融合了古老的文化传统和现代的都市风貌。故宫、长城、天坛等历史遗迹吸引了来自世界各地的游客。同时，北京也是中国的政治、文化和国际交往中心。",
+    "desc": "zh-beijing"
+  },
+  {
+    "id": "ja-001",
+    "text": "人工知能技術は急速に進化しており、私たちの生活や仕事の方法を根本的に変えつつあります。機械学習や深層学習の進歩により、画像認識、音声認識、自然言語処理などの分野で目覚ましい成果が上がっています。これからの社会では、AIとの協働がますます重要になるでしょう。",
+    "desc": "ja-ai"
+  },
+  {
+    "id": "ja-002",
+    "text": "日本には四季折々の美しい風景があります。春には桜が咲き誇り、夏には海や山でレジャーを楽しみ、秋には紅葉が美しく、冬には雪景色が広がります。季節ごとに異なる食べ物や行事もあり、日本の文化は四季と深く結びついています。",
+    "desc": "ja-seasons"
+  },
+  {
+    "id": "ja-003",
+    "text": "東京は日本の首都であり、世界有数の大都市です。最新のテクノロジーと伝統的な文化が共存するこの街には、浅草や秋葉原、渋谷など個性豊かなエリアがたくさんあります。美味しい料理やエンターテイメントも豊富で、訪れる人を飽きさせません。",
+    "desc": "ja-tokyo"
+  },
+  {
+    "id": "ko-001",
+    "text": "인공 지능 기술은 우리 사회의 모든 측면을 변화시키고 있습니다. 자율 주행 자동차부터 의료 진단까지, 머신 러닝 알고리즘은 점점 더 복잡한 작업을 수행할 수 있게 되었습니다. 딥 러닝의 발전은 컴퓨터 비전과 자연어 처리 분야에서 놀라운 성과를 가져왔습니다.",
+    "desc": "ko-ai"
+  },
+  {
+    "id": "ko-002",
+    "text": "서울은 대한민국의 수도이자 세계적인 대도시입니다. 이 도시는 최첨단 기술과 전통 문화가 조화롭게 공존하는 곳입니다. 경복궁과 같은 역사적 유적지에서부터 강남의 번화한 거리까지, 서울은 다양한 매력을 가지고 있습니다. K-pop과 K-드라마의 인기로 한국 문화에 대한 관심이 전 세계적으로 높아지고 있습니다.",
+    "desc": "ko-seoul"
+  },
+  {
+    "id": "ru-001",
+    "text": "Искусственный интеллект стремительно меняет наш мир. От голосовых помощников до систем рекомендаций, алгоритмы машинного обучения становятся неотъемлемой частью нашей повседневной жизни. Глубокое обучение позволило достичь впечатляющих результатов в компьютерном зрении, обработке естественного языка и генеративных моделях.",
+    "desc": "ru-ai"
+  },
+  {
+    "id": "ru-002",
+    "text": "Москва — столица России, один из крупнейших городов Европы. Это город с богатой историей и культурой, где современные небоскрёбы соседствуют с древними соборами и памятниками архитектуры. Красная площадь, Кремль, Третьяковская галерея — лишь некоторые из знаменитых достопримечательностей российской столицы.",
+    "desc": "ru-moscow"
+  },
+  {
+    "id": "code-js",
+    "text": "function fibonacci(n) {\n  if (n <= 1) return n;\n  let a = 0, b = 1;\n  for (let i = 2; i <= n; i++) {\n    const c = a + b;\n    a = b;\n    b = c;\n  }\n  return b;\n}\n\nfor (let i = 0; i < 20; i++) {\n  console.log(fibonacci(i));\n}",
+    "desc": "code-js"
+  },
+  {
+    "id": "code-py",
+    "text": "def quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    middle = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + middle + quicksort(right)",
+    "desc": "code-python"
+  },
+  {
+    "id": "code-cpp",
+    "text": "#include <iostream>\n#include <vector>\n#include <algorithm>\n\nstruct Person {\n    std::string name;\n    int age;\n};\n\nint main() {\n    std::vector<Person> people = {{\"Alice\", 30}, {\"Bob\", 25}, {\"Charlie\", 35}};\n    std::sort(people.begin(), people.end(), [](const Person& a, const Person& b) {\n        return a.age < b.age;\n    });\n    for (const auto& p : people) {\n        std::cout << p.name << \": \" << p.age << std::endl;\n    }\n    return 0;\n}",
+    "desc": "code-cpp"
+  },
+  {
+    "id": "emoji-001",
+    "text": "🎉🚀🌟 Welcome to the future! 🎯💪 Let us build amazing things together! 🔥💯✨",
+    "desc": "emoji-greeting"
+  },
+  {
+    "id": "emoji-002",
+    "text": "I love programming! 💻❤️ Python is awesome 🐍 JavaScript is everywhere 🌐 Rust is blazing fast ⚡🔥 What is your favorite language? 🤔💭",
+    "desc": "emoji-coding"
+  },
+  {
+    "id": "emoji-003",
+    "text": "🌍🌎🌏 Our planet is beautiful! Let us protect it together. 💚🌱♻️ Reduce, reuse, recycle! 🌿🌻🐝",
+    "desc": "emoji-earth"
+  },
+  {
+    "id": "mixed-001",
+    "text": "Hello 你好 こんにちは 안녕하세요 Привет! Welcome to our multilingual world 🌍 In this globalized era, communication across cultures is more important than ever! 🚀🎉",
+    "desc": "mixed-all"
+  },
+  {
+    "id": "math-001",
+    "text": "E = mc^2 is Einsteins famous equation relating energy and mass. The speed of light c is approximately 3.0 times 10 to the 8 meters per second. Plancks constant h is 6.626 times 10 to the negative 34 joule-seconds.",
+    "desc": "math-formulas"
+  },
+  {
+    "id": "sql-001",
+    "text": "SELECT p.name, SUM(o.total) as revenue FROM customers c JOIN orders o ON c.id = o.customer_id JOIN products p ON o.product_id = p.id WHERE o.created_at >= \"2024-01-01\" GROUP BY p.name HAVING revenue > 1000 ORDER BY revenue DESC LIMIT 10;",
+    "desc": "code-sql"
+  }
+]
