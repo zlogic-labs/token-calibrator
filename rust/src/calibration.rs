@@ -11,6 +11,7 @@ use crate::buckets::{classify_token_buckets, feature_vector, token_bucket_priors
 
 /// Data-only least-squares accumulator: a = Σ xxT (N×N), g = Σ x·y (N).
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TokenAccumulator {
     pub a: [[f64; N_BUCKETS]; N_BUCKETS],
     pub g: [f64; N_BUCKETS],

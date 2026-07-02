@@ -25,6 +25,7 @@ python/.eggs/
 # --- Go ---
 go/bin/
 go/vendor/
+*.exe
 
 # --- IDE / Editor ---
 .idea/
