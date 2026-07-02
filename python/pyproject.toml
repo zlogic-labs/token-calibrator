@@ -12,7 +12,7 @@ keywords = ["token", "estimator", "llm", "regression"]
 requires-python = ">=3.10"
 
 [project.urls]
-repository = "https://github.com/zlogic-libs/token-calibrator"
+repository = "https://github.com/zlogic-labs/token-calibrator"
 
 [tool.setuptools.packages.find]
 where = ["src"]
