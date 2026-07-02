@@ -7,11 +7,26 @@ on:
       - 'v*'
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy-rust:
+        description: 'Rust (crates.io)'
+        type: boolean
+        default: false
+      deploy-ts:
+        description: 'TypeScript (npm)'
+        type: boolean
+        default: false
+      deploy-py:
+        description: 'Python (PyPI)'
+        type: boolean
+        default: false
 
 jobs:
   # ──────────────────────────── Test jobs ────────────────────────────
 
-  rust:
+  rust-test:
+    name: Rust tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -22,7 +37,8 @@ jobs:
       - run: cargo test
       - run: cargo clippy -- -D warnings
 
-  typescript:
+  ts-test:
+    name: TypeScript tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -36,7 +52,8 @@ jobs:
       - run: npm test
       - run: npm run build
 
-  python:
+  py-test:
+    name: Python tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -49,7 +66,8 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: pytest
 
-  go:
+  go-test:
+    name: Go tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -62,42 +80,17 @@ jobs:
       - run: go test ./...
       - run: go vet ./...
 
-  # ──────────────────────── Validate before deploy ────────────────────────
-  # Dry-run all publishes to catch errors early, before any real publish.
-
-  validate-deploy:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [rust, typescript, python, go]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - run: cp ../README.md ../LICENSE ./ && cargo publish --dry-run --allow-dirty
-        working-directory: rust
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org/
-      - run: npm install && npm run build && cp ../README.md ../LICENSE ./ && npm publish --dry-run
-        working-directory: ts
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-      - run: pip install build twine && cp ../README.md ../LICENSE ./ && python -m build
-        working-directory: python
-
-  # ──────────────────────── Deploy jobs (independent) ────────────────────────
-  # Each can fail independently; a failed version can be fixed and retried
-  # without affecting already-published packages.
+  # ──────────────────────── Deploy jobs ────────────────────────
+  # Triggered by: v* tag push (auto), or workflow_dispatch (manual, per-language)
+  # Each job is independent — one failure doesn't block others.
+  # Each runs its own dry-run before the real publish.
 
   rust-deploy:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [validate-deploy]
+    name: Deploy Rust (crates.io)
+    if: >
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy-rust)
+    needs: [rust-test]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -106,11 +99,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: cp ../README.md ../LICENSE ./
+      - run: cargo publish --dry-run --allow-dirty
       - run: cargo publish --allow-dirty --token ${{ secrets.CARGO_TOKEN }}
 
   ts-deploy:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [validate-deploy]
+    name: Deploy TypeScript (npm)
+    if: >
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy-ts)
+    needs: [ts-test]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -123,13 +120,21 @@ jobs:
           registry-url: https://registry.npmjs.org/
       - run: npm install && npm run build
       - run: cp ../README.md ../LICENSE ./
+      - run: npm publish --dry-run
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   py-deploy:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [validate-deploy]
+    name: Deploy Python (PyPI)
+    if: >
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy-py)
+    needs: [py-test]
+    permissions:
+      id-token: write
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -149,7 +154,6 @@ jobs:
 
   release:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [validate-deploy]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
