@@ -43,3 +43,4 @@ smoke-tests/rs/target/
 smoke-tests/go/go.sum
 benchmark/node_modules/
 benchmark/package-lock.json
+benchmark/calibration_results/

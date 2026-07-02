@@ -7,6 +7,7 @@
     "@anthropic-ai/tokenizer": "^0.0.4",
     "@zlogic/token-calibrator": "^1.0.1",
     "llama-tokenizer-js": "^1.2.2",
+    "parquetjs": "^0.11.2",
     "tiktoken": "^1.0.22"
   }
 }
